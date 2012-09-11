@@ -1,5 +1,6 @@
 #include <LoggingHub.hpp>
 #include "VoteCounterShell.hpp"
+#include "ProjectSettings.hpp"
 
 QSettings * g_projectSettings = 0;
 
@@ -17,9 +18,10 @@ main(int argc, char * argv[])
     app.setApplicationName("Vote Counter");
     app.setQuitOnLastWindowClosed(true);
 
-    g_projectSettings = new QSettings;
+    g_projectSettings = new QSettings(&app);
 
     VoteCounterShell mainw;
+
     mainw.setWindowTitle( app.applicationName() );
 
     // load the actual UI
@@ -37,6 +39,6 @@ main(int argc, char * argv[])
 
     QArtm::LoggingHub::setup(&mainw);
 
-    qDebug() << "Program started";
+    qDebug() << qPrintable(app.applicationName()) << "started";
     return app.exec();
 }
