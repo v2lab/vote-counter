@@ -20,6 +20,16 @@ main(int argc, char * argv[])
 
     QMainWindow mainw;
     mainw.setWindowTitle( app.applicationName() );
+
+    // load the actual UI
+    QUiLoader loader;
+    QFile file(":/forms/VoteCounter.ui");
+    file.open(QFile::ReadOnly);
+    QWidget *myWidget = loader.load(&file);
+    file.close();
+
+    mainw.setCentralWidget( myWidget );
+
     mainw.showMaximized();
     mainw.raise();
 
