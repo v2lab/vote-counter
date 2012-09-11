@@ -54,7 +54,7 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QTabWidget" name="tabWidget">
+        <widget class="QTabWidget" name="mode">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
            <horstretch>0</horstretch>
@@ -62,12 +62,89 @@
           </sizepolicy>
          </property>
          <property name="currentIndex">
-          <number>2</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="trainTab">
           <attribute name="title">
            <string>Train</string>
           </attribute>
+          <layout class="QGridLayout" name="gridLayout_2">
+           <property name="margin">
+            <number>0</number>
+           </property>
+           <property name="spacing">
+            <number>2</number>
+           </property>
+           <item row="0" column="1">
+            <widget class="QRadioButton" name="greenTrainMode">
+             <property name="text">
+              <string>green</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+             <attribute name="buttonGroup">
+              <string>trainModeGroup</string>
+             </attribute>
+            </widget>
+           </item>
+           <item row="0" column="2">
+            <widget class="QRadioButton" name="yellowTrainMode">
+             <property name="text">
+              <string>yellow</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string>trainModeGroup</string>
+             </attribute>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QRadioButton" name="pinkTrainMode">
+             <property name="text">
+              <string>pink</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string>trainModeGroup</string>
+             </attribute>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QRadioButton" name="maskDrawMode">
+             <property name="text">
+              <string>mask</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string>trainModeGroup</string>
+             </attribute>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <spacer name="horizontalSpacer_3">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="0" column="3">
+            <spacer name="horizontalSpacer_4">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
          </widget>
          <widget class="QWidget" name="countTab">
           <attribute name="title">
@@ -166,4 +243,7 @@
  </widget>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="trainModeGroup"/>
+ </buttongroups>
 </ui>

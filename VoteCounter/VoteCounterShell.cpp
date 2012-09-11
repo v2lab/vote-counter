@@ -6,9 +6,11 @@
 #include <QListWidget>
 #include <QFileSystemModel>
 #include <QGraphicsView>
+#include <QRadioButton>
+#include <QButtonGroup>
 
 VoteCounterShell::VoteCounterShell(QWidget *parent) :
-    QMainWindow(parent), m_snapshot(0)
+    QMainWindow(parent), m_snapshot(0), m_lastWorkMode(0)
 {
 }
 
@@ -72,10 +74,54 @@ void VoteCounterShell::loadSnapshot(const QString &path)
     QGraphicsView * display = findChild<QGraphicsView*>("display");
     display->setScene( m_snapshot->scene() );
     display->fitInView( m_snapshot->scene()->sceneRect(), Qt::KeepAspectRatio );
+
+    recallLastWorkMode();
+    m_snapshot->setMode( SnapshotModel::TRAIN );
 }
 
 void VoteCounterShell::on_sizeLimit_valueChanged( int newValue )
 {
     projectSettings().setValue("size_limit", newValue);
     projectSettings().sync();
+}
+
+void VoteCounterShell::on_mode_currentChanged( int index )
+{
+    // remember last work mode so we can force it when loaded new snap
+    if (index == 0 || index == 1) {
+        m_lastWorkMode = index;
+    }
+
+    switch (index) {
+    case 0: { // train
+        QButtonGroup * grp = findChild<QButtonGroup *>("trainModeGroup");
+        on_trainModeGroup_buttonClicked(grp->checkedButton());
+        break;
+    }
+    case 1: // count
+        m_snapshot->setMode( SnapshotModel::COUNT );
+        break;
+    case 2:
+        break;
+    }
+}
+
+void VoteCounterShell::on_trainModeGroup_buttonClicked( QAbstractButton * button )
+{
+    if (!m_snapshot) return;
+    QString trainMode = button->text().toLower();
+    m_snapshot->setTrainMode( trainMode );
+}
+
+void VoteCounterShell::recallLastWorkMode()
+{
+    QTabWidget * mode = findChild<QTabWidget*>("mode");
+    Q_ASSERT(mode);
+    mode->setCurrentIndex(m_lastWorkMode);
+    if (m_lastWorkMode==0) {
+        QRadioButton * green = findChild<QRadioButton*>("greenTrainMode");
+        Q_ASSERT(green);
+        green->setChecked(true);
+    }
+
 }

@@ -5,10 +5,15 @@
 #include <QDir>
 #include <QMap>
 #include <QImage>
+#include <QGraphicsScene>
+#include <QEvent>
 
 SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
-    QObject(parent)
+    QObject(parent), m_scene(new QGraphicsScene(this)),
+    m_mode(INERT), m_color("green")
 {
+    m_scene->setObjectName("scene"); // so we can autoconnect signals
+
     qDebug() << "Loading" << qPrintable(path);
 
     // check if cache is present, create otherwise
@@ -33,7 +38,8 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     }
 
     // add the image to the scene
-    m_scene.addPixmap( QPixmap::fromImage( working ) );
+    m_scene->addPixmap( QPixmap::fromImage( working ) );
+    m_scene->installEventFilter(this);
 
     qDebug() << qPrintable(path) << "loaded";
 }
@@ -55,4 +61,41 @@ void SnapshotModel::setImage(const QString &tag, const QImage &img)
     m_images[tag] = img;
     QString path = m_cacheDir.filePath(tag + ".png");
     img.save( path );
+}
+
+bool SnapshotModel::eventFilter(QObject * target, QEvent * event)
+{
+    if (m_scene == qobject_cast<QGraphicsScene*>(target)) {
+        switch( event->type() ) {
+        case QEvent::GraphicsSceneMousePress: {
+            QGraphicsSceneMouseEvent * mevent = dynamic_cast<QGraphicsSceneMouseEvent *>(event);
+            // mevent->scenePos() is pixel coordinates of the pick
+            pick( mevent->scenePos().x(), mevent->scenePos().y() );
+            break;
+        }
+        default:
+            break;
+        }
+    }
+}
+
+void SnapshotModel::pick(int x, int y)
+{
+    QImage working = image("working");
+
+    if (m_mode == TRAIN) {
+        if (working.rect().contains(x,y)) {
+            qDebug() << "picked" << m_color << "at" << x << y;
+        }
+    }
+}
+
+void SnapshotModel::setTrainMode(const QString &tag)
+{
+    if (tag.toLower() == "mask") {
+        setMode(MASK);
+    } else {
+        setMode(TRAIN);
+        m_color = tag;
+    }
 }
