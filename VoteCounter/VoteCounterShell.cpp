@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QListWidget>
 #include <QFileSystemModel>
+#include <QGraphicsView>
 
 VoteCounterShell::VoteCounterShell(QWidget *parent) :
     QMainWindow(parent), m_snapshot(0)
@@ -68,6 +69,9 @@ void VoteCounterShell::loadSnapshot(const QString &path)
 {
     if (m_snapshot) delete m_snapshot;
     m_snapshot = new SnapshotModel(path, this);
+    QGraphicsView * display = findChild<QGraphicsView*>("display");
+    display->setScene( m_snapshot->scene() );
+    display->fitInView( m_snapshot->scene()->sceneRect(), Qt::KeepAspectRatio );
 }
 
 void VoteCounterShell::on_sizeLimit_valueChanged( int newValue )

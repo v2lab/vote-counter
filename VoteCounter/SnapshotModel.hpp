@@ -2,6 +2,7 @@
 #define SNAPSHOTMODEL_HPP
 
 #include <QObject>
+#include <QGraphicsScene>
 
 class SnapshotModel : public QObject
 {
@@ -11,6 +12,8 @@ public:
 
     QImage image(const QString& tag);
     void setImage(const QString& tag, const QImage& img);
+
+    QGraphicsScene * scene() { return &m_scene; }
 signals:
 
 public slots:
@@ -18,6 +21,7 @@ public slots:
 protected:
     QDir m_cacheDir;
     QMap< QString, QImage > m_images;
+    QGraphicsScene m_scene;
 };
 
 #endif // SNAPSHOTMODEL_HPP

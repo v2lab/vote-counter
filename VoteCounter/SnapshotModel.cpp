@@ -26,10 +26,16 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     QImage working = image("working");
     if (working.isNull() || std::max(working.width(), working.height()) != limit ) {
         // no working image: create
+        qDebug() << "scaling down" << qPrintable(path) << "to" << limit;
         QImage orig(path);
         working = orig.scaled( limit, limit, Qt::KeepAspectRatio, Qt::SmoothTransformation );
         setImage("working", working);
     }
+
+    // add the image to the scene
+    m_scene.addPixmap( QPixmap::fromImage( working ) );
+
+    qDebug() << qPrintable(path) << "loaded";
 }
 
 QImage SnapshotModel::image(const QString &tag)
