@@ -1,4 +1,5 @@
 #include <LoggingHub.hpp>
+#include "VoteCounterShell.hpp"
 
 QSettings * g_projectSettings = 0;
 
@@ -18,17 +19,18 @@ main(int argc, char * argv[])
 
     g_projectSettings = new QSettings;
 
-    QMainWindow mainw;
+    VoteCounterShell mainw;
     mainw.setWindowTitle( app.applicationName() );
 
     // load the actual UI
     QUiLoader loader;
     QFile file(":/forms/VoteCounter.ui");
     file.open(QFile::ReadOnly);
-    QWidget *myWidget = loader.load(&file);
+    QWidget * vote_counter_ui = loader.load(&file);
     file.close();
-
-    mainw.setCentralWidget( myWidget );
+    mainw.setCentralWidget(  vote_counter_ui );
+    QMetaObject::connectSlotsByName( &mainw );
+    mainw.loadSettings();
 
     mainw.showMaximized();
     mainw.raise();
