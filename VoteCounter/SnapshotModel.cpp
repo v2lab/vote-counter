@@ -1,6 +1,5 @@
 #include "SnapshotModel.hpp"
 #include "ProjectSettings.hpp"
-#include <JsonSavior.hpp>
 
 #include <qt-json/json.h>
 using namespace QtJson;
@@ -8,6 +7,7 @@ using namespace QtJson;
 #include <QFileInfo>
 #include <QDir>
 #include <QMap>
+#include <QVector>
 #include <QImage>
 #include <QGraphicsScene>
 #include <QGraphicsItem>
@@ -141,16 +141,38 @@ void SnapshotModel::saveData()
     QFile file( m_cacheDir.filePath("data.json"));
     file.open(QFile::WriteOnly);
     QTextStream strm(&file);
-    JsonSavior json( strm );
-
-    json.openBrace();
-    json.save("picks", m_colorPicks);
-    json.closeBrace();
-
+    QVariantHash conf;
+    QVariantHash picks;
+    foreach(QString color, m_colorPicks.keys()) {
+        QVariantList l;
+        foreach(QPoint p, m_colorPicks[color])
+            l << p.x() << p.y();
+        picks[color] = l;
+    }
+    conf["picks"] = picks;
+    strm << Json::serialize(conf);
 }
 
 void SnapshotModel::loadData()
 {
-    QFile json( m_cacheDir.filePath("data.json"));
+    QFile file( m_cacheDir.filePath("data.json"));
+    file.open(QFile::ReadOnly);
+    QTextStream strm(&file);
+    QString json = strm.readAll();
+    QVariantMap parsed = Json::parse(json).toMap();
+
+    QVariantMap picks = parsed["picks"].toMap();
+    foreach(QString color, picks.keys()) {
+        setTrainMode(color);
+        QVariantList list = picks[color].toList();
+        QVector<QVariant> array;
+        foreach(QVariant v, list) array << v;
+
+        for(int i=0; i<array.size(); i+=2) {
+            int x = array[i].toInt(), y = array[i+1].toInt();
+            m_colorPicks[color] << QPoint( x, y );
+            pick(x,y);
+        }
+    }
 
 }
