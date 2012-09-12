@@ -115,11 +115,13 @@ void SnapshotModel::setTrainMode(const QString &tag)
         setMode(TRAIN);
         m_color = tag;
     }
+
+    updateViews();
 }
 
 void SnapshotModel::addCross(int x, int y)
 {
-    QGraphicsLineItem * cross = new QGraphicsLineItem(-5,-5,+5,+5);
+    QGraphicsLineItem * cross = new QGraphicsLineItem(-5,-5,+5,+5, layer(m_color));
     cross->setPen(m_pens["white"]);
     cross->setPos(x, y);
 
@@ -132,6 +134,10 @@ void SnapshotModel::addCross(int x, int y)
 
 void SnapshotModel::updateViews()
 {
+    QString tag = m_mode == TRAIN ? m_color : QString();
+    foreach(QString layer_name, m_layers.keys()) {
+        m_layers[layer_name]->setVisible( (layer_name == tag) );
+    }
     /* something wrong with repaintage... */
     foreach(QGraphicsView * view,m_scene->views()) {
         view->viewport()->update();
@@ -184,4 +190,13 @@ void SnapshotModel::loadData()
         m_color = old_color;
     }
 
+    updateViews();
+}
+
+QGraphicsItem * SnapshotModel::layer(const QString &name)
+{
+    if (!m_layers.contains(name)) {
+        m_layers[name] = new QGraphicsItemGroup(0,m_scene);
+    }
+    return m_layers[name];
 }

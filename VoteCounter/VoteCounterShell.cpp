@@ -82,7 +82,6 @@ void VoteCounterShell::loadSnapshot(const QString &path)
     display->fitInView( m_snapshot->scene()->sceneRect(), Qt::KeepAspectRatio );
 
     recallLastWorkMode();
-    m_snapshot->setMode( SnapshotModel::TRAIN );
 }
 
 void VoteCounterShell::on_sizeLimit_valueChanged( int newValue )
@@ -128,6 +127,7 @@ void VoteCounterShell::recallLastWorkMode()
         QRadioButton * green = findChild<QRadioButton*>("greenTrainMode");
         Q_ASSERT(green);
         green->setChecked(true);
+        on_trainModeGroup_buttonClicked(green);
     }
 
 }

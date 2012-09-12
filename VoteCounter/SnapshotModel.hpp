@@ -36,11 +36,13 @@ protected:
     QString m_color;
     QMap< QString, QList< QPoint > > m_colorPicks;
     QMap< QString, QPen > m_pens;
+    QMap< QString, QGraphicsItem *> m_layers;
 
     void addCross(int x, int y);
     void updateViews();
     void saveData();
     void loadData();
+    QGraphicsItem * layer(const QString& name);
 
     virtual bool eventFilter(QObject *, QEvent *);
 };
