@@ -26,6 +26,8 @@ public slots:
     void on_sizeLimit_valueChanged( int newValue );
     void on_mode_currentChanged( int index );
     void on_trainModeGroup_buttonClicked( QAbstractButton * button );
+    void on_clearTrainLayer_clicked();
+    void on_pickFuzz_valueChanged( int newValue );
 
 protected:
     SnapshotModel * m_snapshot;

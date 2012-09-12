@@ -23,10 +23,14 @@ VoteCounterShell::~VoteCounterShell()
 void VoteCounterShell::loadSettings()
 {
     QSpinBox * spinner = findChild<QSpinBox*>("sizeLimit");
-    if (spinner) {
-        spinner->setValue( projectSettings().value("size_limit", 640).toInt() );
+    bool ok;
+    int value = projectSettings().value("size_limit").toInt(&ok);
+    if (ok) spinner->setValue( value );
 
-    }
+    spinner = findChild<QSpinBox*>("pickFuzz");
+    value = projectSettings().value("pick_fuzz").toInt(&ok);
+    if (ok) spinner->setValue( value );
+
     loadDir( projectSettings().value("snaps_dir", QString()).toString() );
 }
 
@@ -84,6 +88,12 @@ void VoteCounterShell::loadSnapshot(const QString &path)
     recallLastWorkMode();
 }
 
+void VoteCounterShell::on_pickFuzz_valueChanged( int newValue )
+{
+    projectSettings().setValue("pick_fuzz", newValue);
+    projectSettings().sync();
+}
+
 void VoteCounterShell::on_sizeLimit_valueChanged( int newValue )
 {
     projectSettings().setValue("size_limit", newValue);
@@ -118,6 +128,12 @@ void VoteCounterShell::on_trainModeGroup_buttonClicked( QAbstractButton * button
     m_snapshot->setTrainMode( trainMode );
 }
 
+void VoteCounterShell::on_clearTrainLayer_clicked()
+{
+    if (!m_snapshot) return;
+    m_snapshot->clearLayer();
+}
+
 void VoteCounterShell::recallLastWorkMode()
 {
     QTabWidget * mode = findChild<QTabWidget*>("mode");
@@ -131,3 +147,4 @@ void VoteCounterShell::recallLastWorkMode()
     }
 
 }
+

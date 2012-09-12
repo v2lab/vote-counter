@@ -1,6 +1,9 @@
 #include "SnapshotModel.hpp"
 #include "ProjectSettings.hpp"
 
+#include "QOpenCV.hpp"
+using namespace QOpenCV;
+
 #include <qt-json/json.h>
 using namespace QtJson;
 
@@ -11,13 +14,14 @@ using namespace QtJson;
 #include <QImage>
 #include <QGraphicsScene>
 #include <QGraphicsItem>
+#include <QGraphicsPolygonItem>
 #include <QEvent>
 
 SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     QObject(parent), m_scene(new QGraphicsScene(this)),
     m_mode(INERT), m_color("green")
 {
-    m_pens["white"] = QPen(Qt::white,2);
+    m_pens["white"] = QPen(QColor(255,255,255,150), 1);
 
     m_scene->setObjectName("scene"); // so we can autoconnect signals
 
@@ -59,13 +63,18 @@ SnapshotModel::~SnapshotModel()
     saveData();
 }
 
-QImage SnapshotModel::image(const QString &tag)
+QImage SnapshotModel::image(const QString &tag, bool mask)
 {
     if (!m_images.contains(tag)) {
          QString path = m_cacheDir.filePath(tag + ".png");
          QImage img(path);
          if (img.isNull())
              return img;
+         if (mask)
+             img = img.convertToFormat(QImage::Format_Indexed8, greyTable());
+         else if (img.format() != QImage::Format_RGB888) {
+             img = img.convertToFormat(QImage::Format_RGB888);
+         }
          m_images[tag] = img;
     }
     return m_images[tag];
@@ -100,9 +109,9 @@ void SnapshotModel::pick(int x, int y)
 
     if (m_mode == TRAIN) {
         if (working.rect().contains(x,y)) {
-            qDebug() << "picked" << m_color << "at" << x << y;
             addCross(x,y);
-            m_colorPicks[m_color].append( QPoint(x,y) );
+            selectByFlood(x,y);
+            m_colorPicks[m_color].append( QPoint(x,y) ); // this is for saving / restoring
         }
     }
 }
@@ -128,7 +137,6 @@ void SnapshotModel::addCross(int x, int y)
     QGraphicsLineItem * l = new QGraphicsLineItem(+5,-5,-5,+5,cross);
     l->setPen(m_pens["white"]);
 
-    m_scene->addItem(cross);
     updateViews();
 }
 
@@ -199,4 +207,85 @@ QGraphicsItem * SnapshotModel::layer(const QString &name)
         m_layers[name] = new QGraphicsItemGroup(0,m_scene);
     }
     return m_layers[name];
+}
+
+void SnapshotModel::clearLayer()
+{
+    if (m_mode == TRAIN) {
+        QList<QGraphicsItem*> children = layer( m_color )->childItems();
+        foreach(QGraphicsItem* child, children) {
+            delete child;
+        }
+        m_colorPicks[m_color].clear();
+    } else if (m_mode == MASK) {
+        qDebug() << "TODO clear mask";
+    }
+
+    updateViews();
+}
+
+void SnapshotModel::selectByFlood(int x, int y)
+{
+    // flood fill inside roi
+    QImage q_input = image("working");
+    cv::Mat input(q_input.height(), q_input.width(), CV_8UC3, (void*)q_input.constBits());
+
+    if (!m_matrices.contains(m_color+"_pickMask")) {
+        m_matrices[m_color+"_pickMask"] = cv::Mat( input.rows+2, input.cols+2, CV_8UC1, cv::Scalar(0));
+    }
+    cv::Mat mask = m_matrices[m_color+"_pickMask"];
+
+    cv::Rect bounds;
+
+    int pf = projectSettings().value("pick_fuzz").toInt();
+    int res = cv::floodFill(input, mask,
+                            cv::Point(x,y),
+                            cv::Scalar(0,0,0),
+                            &bounds,
+                            // FIXME the range should be preference
+                            cv::Scalar( pf,pf,pf ),
+                            cv::Scalar( pf,pf,pf ),
+                            cv::FLOODFILL_MASK_ONLY | cv::FLOODFILL_FIXED_RANGE );
+
+    if (res < 1) return;
+
+    // if intersected some polygons - remove these polygons and grow ROI with their bounds
+    QRect q_bounds = toQt(bounds);
+    QGraphicsItem * colorLayer = layer(m_color);
+    foreach(QGraphicsItem * item, colorLayer->childItems()) {
+        QGraphicsPolygonItem * poly_item = qgraphicsitem_cast<QGraphicsPolygonItem *>(item);
+        if (!poly_item) continue;
+        QRect bounds = poly_item->polygon().boundingRect().toRect();
+        if (q_bounds.intersects( bounds )) {
+            q_bounds = q_bounds.united(bounds);
+            delete poly_item;
+        }
+    }
+    // intersect with the image
+    q_bounds = q_bounds.intersected( image("working").rect() );
+
+    bounds = toCv(q_bounds);
+
+    // cut out from mask
+    cv::Mat mask0;
+    cv::Mat( mask, cv::Rect( bounds.x+1,bounds.y+1,bounds.width,bounds.height ) ).copyTo(mask0);
+    // find contours there and add to the polygons list
+    std::vector< std::vector< cv::Point > > contours;
+    cv::findContours(mask0,
+                     contours,
+                     CV_RETR_EXTERNAL,
+                     CV_CHAIN_APPROX_TC89_L1,
+                     // offset: compensate for ROI and flood fill mask border
+                     bounds.tl() );
+
+    // now refresh contour visuals
+    foreach( const std::vector< cv::Point >& contour, contours ) {
+        std::vector< cv::Point > approx;
+        // simplify contours
+        cv::approxPolyDP( contour, approx, 3, true);
+        QPolygon polygon = toQPolygon(approx);
+        QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( polygon, colorLayer );
+        poly_item->setPen(m_pens["white"]);
+    }
+
 }
