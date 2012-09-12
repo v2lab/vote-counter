@@ -10,6 +10,7 @@ class VoteCounterShell : public QMainWindow
     Q_OBJECT
 public:
     explicit VoteCounterShell(QWidget *parent = 0);
+    ~VoteCounterShell();
 
 signals:
 

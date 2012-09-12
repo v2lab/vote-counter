@@ -14,6 +14,12 @@ VoteCounterShell::VoteCounterShell(QWidget *parent) :
 {
 }
 
+VoteCounterShell::~VoteCounterShell()
+{
+    if (m_snapshot)
+        delete m_snapshot;
+}
+
 void VoteCounterShell::loadSettings()
 {
     QSpinBox * spinner = findChild<QSpinBox*>("sizeLimit");

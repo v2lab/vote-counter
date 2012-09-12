@@ -15,6 +15,7 @@ public:
         COUNT
     };
     explicit SnapshotModel(const QString& path, QObject *parent);
+    ~SnapshotModel();
 
     QImage image(const QString& tag);
     void setImage(const QString& tag, const QImage& img);
@@ -33,6 +34,12 @@ protected:
     QGraphicsScene * m_scene;
     Mode m_mode;
     QString m_color;
+    QMap< QString, QList< QPoint > > m_colorPicks;
+
+    void addCross(int x, int y, const QColor& color);
+    void updateViews();
+    void saveData();
+    void loadData();
 
     virtual bool eventFilter(QObject *, QEvent *);
 };

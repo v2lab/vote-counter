@@ -1,3 +1,6 @@
 [submodule "lib/cxxtest"]
 	path = lib/cxxtest
 	url = https://github.com/CxxTest/cxxtest.git
+[submodule "lib/qt-json"]
+	path = lib/qt-json
+	url = https://github.com/ereilin/qt-json.git

@@ -1,11 +1,16 @@
 #include "SnapshotModel.hpp"
 #include "ProjectSettings.hpp"
+#include <JsonSavior.hpp>
+
+#include <qt-json/json.h>
+using namespace QtJson;
 
 #include <QFileInfo>
 #include <QDir>
 #include <QMap>
 #include <QImage>
 #include <QGraphicsScene>
+#include <QGraphicsItem>
 #include <QEvent>
 
 SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
@@ -41,7 +46,15 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     m_scene->addPixmap( QPixmap::fromImage( working ) );
     m_scene->installEventFilter(this);
 
+    loadData();
+
     qDebug() << qPrintable(path) << "loaded";
+}
+
+SnapshotModel::~SnapshotModel()
+{
+    qDebug() << "closing snapshot...";
+    saveData();
 }
 
 QImage SnapshotModel::image(const QString &tag)
@@ -86,6 +99,8 @@ void SnapshotModel::pick(int x, int y)
     if (m_mode == TRAIN) {
         if (working.rect().contains(x,y)) {
             qDebug() << "picked" << m_color << "at" << x << y;
+            addCross(x,y,Qt::white);
+            m_colorPicks[m_color].append( QPoint(x,y) );
         }
     }
 }
@@ -98,4 +113,44 @@ void SnapshotModel::setTrainMode(const QString &tag)
         setMode(TRAIN);
         m_color = tag;
     }
+}
+
+void SnapshotModel::addCross(int x, int y, const QColor &color)
+{
+    QGraphicsLineItem * cross = new QGraphicsLineItem(-5,-5,+5,+5);
+    cross->setPen(color);
+    cross->setPos(x, y);
+
+    QGraphicsLineItem * l = new QGraphicsLineItem(+5,-5,-5,+5,cross);
+    l->setPen(color);
+
+    m_scene->addItem(cross);
+    updateViews();
+}
+
+void SnapshotModel::updateViews()
+{
+    /* something wrong with repaintage... */
+    foreach(QGraphicsView * view,m_scene->views()) {
+        view->viewport()->update();
+    }
+}
+
+void SnapshotModel::saveData()
+{
+    QFile file( m_cacheDir.filePath("data.json"));
+    file.open(QFile::WriteOnly);
+    QTextStream strm(&file);
+    JsonSavior json( strm );
+
+    json.openBrace();
+    json.save("picks", m_colorPicks);
+    json.closeBrace();
+
+}
+
+void SnapshotModel::loadData()
+{
+    QFile json( m_cacheDir.filePath("data.json"));
+
 }
