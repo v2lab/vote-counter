@@ -48,6 +48,14 @@ inline std::vector< cv::Point2f > toCv( const QVector< QPointF >& pointvec )
     return result;
 }
 
+inline std::vector< cv::Point > toCvInt( const QVector< QPointF >& pointvec )
+{
+    std::vector< cv::Point > result;
+    foreach(QPointF p, pointvec)
+        result.push_back( toCv( p.toPoint() ) );
+    return result;
+}
+
 cv::Rect grow( const cv::Rect& rect, double scale );
 
 const QVector<QRgb>& greyTable();
