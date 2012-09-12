@@ -50,4 +50,6 @@ inline std::vector< cv::Point2f > toCv( const QVector< QPointF >& pointvec )
 
 cv::Rect grow( const cv::Rect& rect, double scale );
 
+const QVector<QRgb>& greyTable();
+
 }

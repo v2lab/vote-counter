@@ -2,7 +2,6 @@
 
 namespace QOpenCV {
 
-static bool s_greyTableInit = false;
 static QVector<QRgb> s_greyTable;
 QImage wrapImage( const cv::Mat& cvmat)
 {
@@ -13,18 +12,23 @@ QImage wrapImage( const cv::Mat& cvmat)
         QImage img((const uchar*)cvmat.data, width, height, cvmat.step.p[0], QImage::Format_RGB888);
         return img.rgbSwapped();
     } else if (cvmat.depth() == CV_8U && cvmat.channels() == 1) {
-        if (!s_greyTableInit) {
-            for (int i = 0; i < 256; i++){
-                s_greyTable.push_back(qRgb(i, i, i));
-            }
-        }
         QImage img((const uchar*)cvmat.data, width, height, cvmat.step.p[0], QImage::Format_Indexed8);
-        img.setColorTable(s_greyTable);
+        img.setColorTable(greyTable());
         return img;
     } else {
         qWarning() << "Image cannot be converted.";
         return QImage();
     }
+}
+
+const QVector<QRgb>& greyTable()
+{
+    if (!s_greyTable.size()) {
+        for (int i = 0; i < 256; i++){
+            s_greyTable.push_back(qRgb(i, i, i));
+        }
+    }
+    return s_greyTable;
 }
 
 cv::Rect grow( const cv::Rect& rect, double scale )
