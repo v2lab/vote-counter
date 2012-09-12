@@ -22,7 +22,8 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     QObject(parent), m_scene(new QGraphicsScene(this)),
     m_mode(INERT), m_color("green")
 {
-    m_pens["white"] = QPen(QColor(255,255,255,150), 1);
+    m_pens["white"] = QPen(Qt::white);
+    m_pens["thick-red"] = QPen(QColor(255,150,150,255), 2);
 
     m_scene->setObjectName("scene"); // so we can autoconnect signals
 
@@ -137,11 +138,16 @@ void SnapshotModel::setTrainMode(const QString &tag)
 
 void SnapshotModel::addCross(int x, int y)
 {
-    QGraphicsLineItem * cross = new QGraphicsLineItem(-5,-5,+5,+5, layer(m_color));
-    cross->setPen(m_pens["white"]);
+    QGraphicsLineItem * cross = new QGraphicsLineItem(-3,-3,+3,+3, layer(m_color));
+    cross->setPen(m_pens["thick-red"]);
     cross->setPos(x, y);
 
-    QGraphicsLineItem * l = new QGraphicsLineItem(+5,-5,-5,+5,cross);
+    QGraphicsLineItem * l = new QGraphicsLineItem(+3,-3,-3,+3,cross);
+    l->setPen(m_pens["thick-red"]);
+
+    l = new QGraphicsLineItem(+2,-2,-2,+2,cross);
+    l->setPen(m_pens["white"]);
+    l = new QGraphicsLineItem(+2,+2,-2,-2,cross);
     l->setPen(m_pens["white"]);
 
     updateViews();
@@ -292,6 +298,9 @@ void SnapshotModel::selectByFlood(int x, int y)
         cv::approxPolyDP( contour, approx, 3, true);
         QPolygon polygon = toQPolygon(approx);
         QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( polygon, colorLayer );
+        poly_item->setPen(m_pens["thick-red"]);
+
+        poly_item = new QGraphicsPolygonItem( polygon, poly_item );
         poly_item->setPen(m_pens["white"]);
     }
 
@@ -299,7 +308,6 @@ void SnapshotModel::selectByFlood(int x, int y)
 
 void SnapshotModel::unpick(int x, int y)
 {
-    qDebug() << "unpicking" << x << y;
     // 1. find which contour we're in (shouldn't we capture it elsewhere then?)
     QString color;
     QGraphicsPolygonItem * unpicked_poly = 0;
@@ -320,8 +328,6 @@ void SnapshotModel::unpick(int x, int y)
     }
     if (!unpicked_poly)
         return;
-
-    qDebug() << "unpicking" << unpicked_poly->polygon() << "on" << color;
 
     // 2. find which picks are in this contour and remove them and their crosses
     foreach(const QPoint& pick, m_colorPicks[color]) {
