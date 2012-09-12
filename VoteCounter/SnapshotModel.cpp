@@ -163,18 +163,25 @@ void SnapshotModel::loadData()
     QString json = strm.readAll();
     QVariantMap parsed = Json::parse(json).toMap();
 
-    QVariantMap picks = parsed["picks"].toMap();
-    foreach(QString color, picks.keys()) {
-        setTrainMode(color);
-        QVariantList list = picks[color].toList();
-        QVector<QVariant> array;
-        foreach(QVariant v, list) array << v;
+    { // load the picks
+        Mode old_mode = m_mode;
+        QString old_color = m_color;
 
-        for(int i=0; i<array.size(); i+=2) {
-            int x = array[i].toInt(), y = array[i+1].toInt();
-            m_colorPicks[color] << QPoint( x, y );
-            pick(x,y);
+        QVariantMap picks = parsed["picks"].toMap();
+        foreach(QString color, picks.keys()) {
+            setTrainMode(color);
+            QVariantList list = picks[color].toList();
+            QVector<QVariant> array;
+            foreach(QVariant v, list) array << v;
+
+            for(int i=0; i<array.size(); i+=2) {
+                int x = array[i].toInt(), y = array[i+1].toInt();
+                pick(x,y);
+            }
         }
+
+        m_mode = old_mode;
+        m_color = old_color;
     }
 
 }
