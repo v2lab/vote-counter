@@ -35,8 +35,9 @@ protected:
     Mode m_mode;
     QString m_color;
     QMap< QString, QList< QPoint > > m_colorPicks;
+    QMap< QString, QPen > m_pens;
 
-    void addCross(int x, int y, const QColor& color);
+    void addCross(int x, int y);
     void updateViews();
     void saveData();
     void loadData();

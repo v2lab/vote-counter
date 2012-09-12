@@ -17,6 +17,8 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     QObject(parent), m_scene(new QGraphicsScene(this)),
     m_mode(INERT), m_color("green")
 {
+    m_pens["white"] = QPen(Qt::white,2);
+
     m_scene->setObjectName("scene"); // so we can autoconnect signals
 
     qDebug() << "Loading" << qPrintable(path);
@@ -99,7 +101,7 @@ void SnapshotModel::pick(int x, int y)
     if (m_mode == TRAIN) {
         if (working.rect().contains(x,y)) {
             qDebug() << "picked" << m_color << "at" << x << y;
-            addCross(x,y,Qt::white);
+            addCross(x,y);
             m_colorPicks[m_color].append( QPoint(x,y) );
         }
     }
@@ -115,14 +117,14 @@ void SnapshotModel::setTrainMode(const QString &tag)
     }
 }
 
-void SnapshotModel::addCross(int x, int y, const QColor &color)
+void SnapshotModel::addCross(int x, int y)
 {
     QGraphicsLineItem * cross = new QGraphicsLineItem(-5,-5,+5,+5);
-    cross->setPen(color);
+    cross->setPen(m_pens["white"]);
     cross->setPos(x, y);
 
     QGraphicsLineItem * l = new QGraphicsLineItem(+5,-5,-5,+5,cross);
-    l->setPen(color);
+    l->setPen(m_pens["white"]);
 
     m_scene->addItem(cross);
     updateViews();
