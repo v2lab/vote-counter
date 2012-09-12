@@ -27,6 +27,7 @@ public slots:
     void setMode(Mode m) { m_mode = m; }
     void setTrainMode(const QString& tag);
     void pick(int x, int y);
+    void unpick(int x, int y);
     void clearLayer();
 
 protected:

@@ -16,6 +16,7 @@ using namespace QtJson;
 #include <QGraphicsItem>
 #include <QGraphicsPolygonItem>
 #include <QEvent>
+#include <QGraphicsSceneMouseEvent>
 
 SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     QObject(parent), m_scene(new QGraphicsScene(this)),
@@ -94,13 +95,19 @@ bool SnapshotModel::eventFilter(QObject * target, QEvent * event)
         case QEvent::GraphicsSceneMousePress: {
             QGraphicsSceneMouseEvent * mevent = dynamic_cast<QGraphicsSceneMouseEvent *>(event);
             // mevent->scenePos() is pixel coordinates of the pick
-            pick( mevent->scenePos().x(), mevent->scenePos().y() );
+            if (mevent->button() == Qt::LeftButton) {
+                pick( mevent->scenePos().x(), mevent->scenePos().y() );
+            } else {
+                unpick(mevent->scenePos().x(), mevent->scenePos().y());
+            }
             break;
         }
         default:
             break;
         }
     }
+
+    return true;
 }
 
 void SnapshotModel::pick(int x, int y)
@@ -288,4 +295,58 @@ void SnapshotModel::selectByFlood(int x, int y)
         poly_item->setPen(m_pens["white"]);
     }
 
+}
+
+void SnapshotModel::unpick(int x, int y)
+{
+    qDebug() << "unpicking" << x << y;
+    // 1. find which contour we're in (shouldn't we capture it elsewhere then?)
+    QString color;
+    QGraphicsPolygonItem * unpicked_poly = 0;
+
+    foreach(QString c, m_layers.keys()) {
+        QGraphicsItem * l = layer(c);
+        foreach(QGraphicsItem * item, l->childItems()) {
+            QGraphicsPolygonItem * poly_item = qgraphicsitem_cast<QGraphicsPolygonItem *>(item);
+            if (!poly_item) continue;
+            if (poly_item->polygon().containsPoint(QPointF(x,y), Qt::OddEvenFill)) {
+                unpicked_poly = poly_item;
+                color = c;
+                break;
+            }
+        }
+        if (unpicked_poly)
+            break;
+    }
+    if (!unpicked_poly)
+        return;
+
+    qDebug() << "unpicking" << unpicked_poly->polygon() << "on" << color;
+
+    // 2. find which picks are in this contour and remove them and their crosses
+    foreach(const QPoint& pick, m_colorPicks[color]) {
+        if (unpicked_poly->polygon().containsPoint(pick, Qt::OddEvenFill))
+            m_colorPicks[color].removeOne(pick);
+    }
+    foreach(QGraphicsItem * item, layer(color)->childItems()) {
+        QGraphicsLineItem * cross = qgraphicsitem_cast<QGraphicsLineItem *>(item);
+        if (!cross) continue;
+        if (unpicked_poly->polygon().containsPoint( cross->pos(), Qt::OddEvenFill )) {
+            delete cross;
+        }
+    }
+
+    // 3. draw this contour onto the mask
+    cv::Mat mask = m_matrices[color+"_pickMask"];
+    std::vector< cv::Point > contour = toCvInt( unpicked_poly->polygon() );
+    cv::Point * pts[] = { contour.data() };
+    int npts[] = { contour.size() };
+    cv::fillPoly( mask, (const cv::Point**)pts, npts, 1, cv::Scalar(0), 8, 0,
+                  // compensate for mask border
+                  cv::Point(1,1) );
+
+    // 4. delete the polygon itself
+    delete unpicked_poly;
+
+    updateViews();
 }
