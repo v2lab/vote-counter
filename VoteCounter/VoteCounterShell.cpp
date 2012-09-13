@@ -148,3 +148,8 @@ void VoteCounterShell::recallLastWorkMode()
 
 }
 
+void VoteCounterShell::on_learn_clicked()
+{
+    if (!m_snapshot) return;
+    m_snapshot->trainColors();
+}

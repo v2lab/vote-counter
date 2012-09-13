@@ -29,6 +29,7 @@ public slots:
     void pick(int x, int y);
     void unpick(int x, int y);
     void clearLayer();
+    void trainColors();
 
 protected:
     QDir m_cacheDir;
@@ -39,6 +40,7 @@ protected:
     QMap< QString, QList< QPoint > > m_colorPicks;
     QMap< QString, QPen > m_pens;
     QMap< QString, QGraphicsItem *> m_layers;
+    QMap< QString, QGraphicsItem *> m_displayers;
     QMap< QString, cv::Mat > m_matrices;
 
     void addCross(int x, int y);
@@ -47,6 +49,7 @@ protected:
     void loadData();
     QGraphicsItem * layer(const QString& name);
     void selectByFlood(int x, int y);
+    cv::Mat matrixFromImage(const QString& tag);
 
     virtual bool eventFilter(QObject *, QEvent *);
 };
