@@ -373,10 +373,9 @@ void SnapshotModel::trainColors()
         if (!m_matrices.contains(color+"_pickMask")) {
             qDebug() << "No examples of" << color;
             continue;
-        } else
-            qDebug() << "extracting example pixels of" << color;
+        }
 
-        QVector<float> sample_pixels;
+        QVector<unsigned char> sample_pixels;
         cv::Mat input = matrixFromImage("working");
         cv::Mat mask = m_matrices[color+"_pickMask"];
 
@@ -385,27 +384,25 @@ void SnapshotModel::trainColors()
                 if (mask.at<unsigned char>(i+1,j+1))
                     // copy this pixel
                     sample_pixels
-                            << (float)(input.ptr<unsigned char>(i)[j*3])
-                            << (float)(input.ptr<unsigned char>(i)[j*3+1])
-                            << (float)(input.ptr<unsigned char>(i)[j*3+2]);
+                            << input.ptr<unsigned char>(i)[j*3]
+                            << input.ptr<unsigned char>(i)[j*3+1]
+                            << input.ptr<unsigned char>(i)[j*3+2];
         qDebug() << "collected" << sample_pixels.size() / 3 << qPrintable(color) << "pixels";
 
-        // reshape sample_pixels for clustring
-        cv::Mat sample(sample_pixels.size()/3, 3, CV_32F, sample_pixels.data());
-        const int DESIRED_CLUSTERS = 5;
-        cv::Mat centers(DESIRED_CLUSTERS, 3, CV_32F); // we want at most 6 colors
+        cv::Mat sample(sample_pixels.size()/3, 3, CV_8UC1, sample_pixels.data());
+        const int NUM_CLUSTERS = 5;
+        cv::Mat centers(NUM_CLUSTERS, 3, CV_32F);
         cvflann::KMeansIndexParams params(
-                    DESIRED_CLUSTERS, // branching(?)
+                    NUM_CLUSTERS, // branching
                     50, // max iterations
                     cvflann::FLANN_CENTERS_KMEANSPP,
                     0);
-        qDebug() << "clustering sample pixel colors";
-        int n_clusters = cv::flann::hierarchicalClustering< cv::flann::L2<float> >( sample, centers, params );
-        qDebug() << "found" << n_clusters << "clusters";
-
+        int n_clusters = cv::flann::hierarchicalClustering< cv::flann::L2<unsigned char> >( sample, centers, params );
         for(int i=0; i<n_clusters; i++) {
             QGraphicsRectItem * patch = new QGraphicsRectItem(displayer);
-            QColor patch_color( (int)centers.at<float>(i,0), (int)centers.at<float>(i,1), (int)centers.at<float>(i,2) );
+            QColor patch_color( centers.at<float>(i,0),
+                                centers.at<float>(i,1),
+                                centers.at<float>(i,2) );
             patch->setBrush( patch_color );
             patch->setPen(m_pens["white"]);
             patch->setRect(0,0,20,20);
