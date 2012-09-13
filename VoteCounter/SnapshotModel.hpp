@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QGraphicsScene>
+#include <opencv2/flann/flann.hpp>
 
 class SnapshotModel : public QObject
 {
@@ -14,6 +15,7 @@ public:
         MASK,
         COUNT
     };
+    static const int NUM_CLUSTERS = 5;
     explicit SnapshotModel(const QString& path, QObject *parent);
     ~SnapshotModel();
 
@@ -42,6 +44,8 @@ protected:
     QMap< QString, QGraphicsItem *> m_layers;
     QMap< QString, QGraphicsItem *> m_displayers;
     QMap< QString, cv::Mat > m_matrices;
+    typedef cv::flann::L2<unsigned char> Distance_U8;
+    cv::flann::GenericIndex< Distance_U8 > * m_flann;
 
     void addCross(int x, int y);
     void updateViews();

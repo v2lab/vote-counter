@@ -18,11 +18,9 @@ using namespace QtJson;
 #include <QEvent>
 #include <QGraphicsSceneMouseEvent>
 
-#include <opencv2/flann/flann.hpp>
-
 SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     QObject(parent), m_scene(new QGraphicsScene(this)),
-    m_mode(INERT), m_color("green")
+    m_mode(INERT), m_color("green"), m_flann(0)
 {
     m_pens["white"] = QPen(Qt::white);
     m_pens["thick-red"] = QPen(Qt::red, 2);
@@ -368,12 +366,12 @@ void SnapshotModel::trainColors()
     QGraphicsItemGroup * displayer = new QGraphicsItemGroup(0,m_scene);
     m_displayers["samples-display"] = displayer;
 
+    QVector<cv::Mat> centers_list;
+    int centers_count = 0;
+
     int color_index = 0;
     foreach(QString color, m_layers.keys()) {
-        if (!m_matrices.contains(color+"_pickMask")) {
-            qDebug() << "No examples of" << color;
-            continue;
-        }
+        if (!m_matrices.contains(color+"_pickMask")) continue;
 
         QVector<unsigned char> sample_pixels;
         cv::Mat input = matrixFromImage("working");
@@ -387,17 +385,19 @@ void SnapshotModel::trainColors()
                             << input.ptr<unsigned char>(i)[j*3]
                             << input.ptr<unsigned char>(i)[j*3+1]
                             << input.ptr<unsigned char>(i)[j*3+2];
+
+        if (sample_pixels.size()==0) continue;
+
         qDebug() << "collected" << sample_pixels.size() / 3 << qPrintable(color) << "pixels";
 
         cv::Mat sample(sample_pixels.size()/3, 3, CV_8UC1, sample_pixels.data());
-        const int NUM_CLUSTERS = 5;
         cv::Mat centers(NUM_CLUSTERS, 3, CV_32F);
         cvflann::KMeansIndexParams params(
                     NUM_CLUSTERS, // branching
                     50, // max iterations
                     cvflann::FLANN_CENTERS_KMEANSPP,
                     0);
-        int n_clusters = cv::flann::hierarchicalClustering< cv::flann::L2<unsigned char> >( sample, centers, params );
+        int n_clusters = cv::flann::hierarchicalClustering< Distance_U8 >( sample, centers, params );
         for(int i=0; i<n_clusters; i++) {
             QGraphicsRectItem * patch = new QGraphicsRectItem(displayer);
             QColor patch_color( centers.at<float>(i,0),
@@ -408,8 +408,20 @@ void SnapshotModel::trainColors()
             patch->setRect(0,0,20,20);
             patch->setPos( 10 + (color_index) * 25, 10 + i * 25 );
         }
+        centers_list << centers;
+        centers_count += n_clusters;
         color_index++;
     }
+
+    // have to convert features to uint8
+    cv::Mat features( centers_count, 3, CV_8UC1 );
+    for(int i=0; i<centers_list.size(); ++i)
+        centers_list[i].convertTo( features.rowRange( i*NUM_CLUSTERS,(i+1)*NUM_CLUSTERS ), CV_8UC1 );
+
+    cvflann::AutotunedIndexParams params(0.8,0.01,0,1.0);
+    if (m_flann) delete m_flann;
+    m_flann = new cv::flann::GenericIndex< Distance_U8 > (features, params);
+    qDebug() << "built FLANN classifier";
 
     updateViews();
 }
