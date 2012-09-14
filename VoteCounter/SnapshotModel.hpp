@@ -15,7 +15,7 @@ public:
         MASK,
         COUNT
     };
-    static const int COLOR_QUANTA_COUNT = 5;
+    static const int COLOR_QUANTA_COUNT = 3;
     explicit SnapshotModel(const QString& path, QObject *parent);
     ~SnapshotModel();
 
@@ -45,7 +45,6 @@ protected:
     QMap< QString, QGraphicsItem *> m_layers;
     QMap< QString, QGraphicsItem *> m_displayers;
     QMap< QString, cv::Mat > m_matrices;
-    typedef cv::flann::L2<unsigned char> Distance_U8;
     typedef cv::flann::L2<float> Distance_F32;
     cv::flann::GenericIndex< Distance_F32 > * m_flann;
     QVector<QRgb> m_palette;
