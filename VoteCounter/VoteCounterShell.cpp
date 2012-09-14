@@ -153,3 +153,9 @@ void VoteCounterShell::on_learn_clicked()
     if (!m_snapshot) return;
     m_snapshot->trainColors();
 }
+
+void VoteCounterShell::on_count_clicked()
+{
+    if (!m_snapshot) return;
+    m_snapshot->countCards();
+}

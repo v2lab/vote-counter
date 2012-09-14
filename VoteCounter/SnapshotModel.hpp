@@ -32,6 +32,7 @@ public slots:
     void unpick(int x, int y);
     void clearLayer();
     void trainColors();
+    void countCards();
 
 protected:
     QDir m_cacheDir;

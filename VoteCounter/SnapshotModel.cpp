@@ -359,7 +359,6 @@ void SnapshotModel::unpick(int x, int y)
 
 void SnapshotModel::trainColors()
 {
-    // display clusters
     if (m_displayers.contains("samples-display")) {
         delete m_displayers["samples-display"];
     }
@@ -368,13 +367,13 @@ void SnapshotModel::trainColors()
 
     QVector<cv::Mat> centers_list;
     int centers_count = 0;
+    cv::Mat input = matrixFromImage("working");
 
     int color_index = 0;
     foreach(QString color, m_layers.keys()) {
         if (!m_matrices.contains(color+"_pickMask")) continue;
 
         QVector<unsigned char> sample_pixels;
-        cv::Mat input = matrixFromImage("working");
         cv::Mat mask = m_matrices[color+"_pickMask"];
 
         for(int i = 0; i<input.rows; ++i)
@@ -394,7 +393,7 @@ void SnapshotModel::trainColors()
         cv::Mat centers(NUM_CLUSTERS, 3, CV_32F);
         cvflann::KMeansIndexParams params(
                     NUM_CLUSTERS, // branching
-                    50, // max iterations
+                    10, // max iterations
                     cvflann::FLANN_CENTERS_KMEANSPP,
                     0);
         int n_clusters = cv::flann::hierarchicalClustering< Distance_U8 >( sample, centers, params );
@@ -418,7 +417,7 @@ void SnapshotModel::trainColors()
     for(int i=0; i<centers_list.size(); ++i)
         centers_list[i].convertTo( features.rowRange( i*NUM_CLUSTERS,(i+1)*NUM_CLUSTERS ), CV_8UC1 );
 
-    cvflann::AutotunedIndexParams params(0.8,0.01,0,1.0);
+    cvflann::AutotunedIndexParams params(1, 1, -1, 1);
     if (m_flann) delete m_flann;
     m_flann = new cv::flann::GenericIndex< Distance_U8 > (features, params);
     qDebug() << "built FLANN classifier";
@@ -435,4 +434,39 @@ cv::Mat SnapshotModel::matrixFromImage(const QString &tag)
     } else {
         return cv::Mat();
     }
+}
+
+void SnapshotModel::countCards()
+{
+    if (!m_flann) {
+        qDebug() << "Teach me the colors first";
+        return;
+    }
+    cvflann::SearchParams params(-1);
+    cv::Mat input = matrixFromImage("working");
+    int n_pixels = input.rows * input.cols;
+    cv::Mat indices( input.rows, input.cols, CV_32SC1 );
+    cv::Mat dists( input.rows, input.cols, CV_32FC1 );
+
+    cv::Mat input_1 = input.reshape( 1, n_pixels ),
+            indices_1 = indices.reshape( 1, n_pixels ),
+            dists_1 = dists.reshape( 1, n_pixels );
+
+    qDebug() << "K-Nearest Neighbout Search";
+    m_flann->knnSearch( input_1, indices_1, dists_1, 1, params);
+    qDebug() << "K-Nearest Neighbout Search done";
+
+
+    m_matrices["indices"] = indices / NUM_CLUSTERS;
+    m_matrices["dists"] = dists;
+
+    cv::Mat cards_mask;
+    float thresh = 2700.0;
+    cv::threshold(dists, cards_mask, thresh, 0, cv::THRESH_TRUNC);
+    cards_mask.convertTo( cards_mask, CV_8UC1, - 255.0 / thresh, 255.0 );
+
+    setImage("cards-mask", wrapImage(cards_mask));
+
+    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(image("cards-mask",true)), 0, m_scene );
+    updateViews();
 }

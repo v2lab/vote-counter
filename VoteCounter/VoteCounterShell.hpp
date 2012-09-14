@@ -29,6 +29,7 @@ public slots:
     void on_clearTrainLayer_clicked();
     void on_pickFuzz_valueChanged( int newValue );
     void on_learn_clicked();
+    void on_count_clicked();
 
 protected:
     SnapshotModel * m_snapshot;
