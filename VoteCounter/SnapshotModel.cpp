@@ -471,7 +471,7 @@ void SnapshotModel::countCards()
     m_matrices["dists"] = dists;
 
     cv::Mat cards_mask;
-    float thresh = 2700.0;
+    float thresh = 2000.0;
     cv::threshold(dists, cards_mask, thresh, 0, cv::THRESH_TRUNC);
     cards_mask.convertTo( cards_mask, CV_8UC1, - 255.0 / thresh, 255.0 );
 
@@ -479,20 +479,22 @@ void SnapshotModel::countCards()
     if (m_displayers.contains("knn-display")) {
         delete m_displayers["knn-display"];
     }
+
+    // poor man's lut
+    cv::Mat vision = cv::Mat( indices.rows, indices.cols, CV_8UC3, cv::Scalar(0,0,0,0) );
+    for(int i=0; i<n_pixels; i++) {
+        if (cards_mask.data[i]) {
+            int index = indices.ptr<int>(0)[i];
+            vision.data[i*3] = m_features.data[ index*3 ];
+            vision.data[i*3+1] = m_features.data[ index*3 + 1 ];
+            vision.data[i*3+2] = m_features.data[ index*3 + 2 ];
+        }
+    }
+
     QGraphicsItemGroup * displayer = new QGraphicsItemGroup(0,m_scene);
     m_displayers["knn-display"] = displayer;
-
-    QImage dist_image( (unsigned char *)cards_mask.data, cards_mask.cols, cards_mask.rows, QImage::Format_Indexed8 );
-    dist_image.setColorTable(greyTable());
-    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(dist_image), displayer );
-    gpi->scale( 0.47, 0.47 );
-
-    indices.convertTo(indices,CV_8UC1);
-    QImage index_image( (unsigned char *)indices.data, indices.cols, indices.rows, QImage::Format_Indexed8 );
-    index_image.setColorTable(m_palette);
-    gpi = new QGraphicsPixmapItem( QPixmap::fromImage(index_image), displayer );
-    gpi->scale( 0.47, 0.47 );
-    gpi->moveBy( 0.53 * index_image.width(), 0);
+    QImage vision_image( (unsigned char *)vision.data, vision.cols, vision.rows, QImage::Format_RGB888 );
+    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(vision_image), displayer );
 
     updateViews();
 }
