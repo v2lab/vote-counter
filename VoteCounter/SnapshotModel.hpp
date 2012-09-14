@@ -45,9 +45,9 @@ protected:
     QMap< QString, QGraphicsItem *> m_layers;
     QMap< QString, QGraphicsItem *> m_displayers;
     QMap< QString, cv::Mat > m_matrices;
-    typedef cv::flann::L2<float> Distance_F32;
+    typedef cv::flann::L2<unsigned char> Distance_8U;
     cv::Mat m_features;
-    cv::flann::GenericIndex< Distance_F32 > * m_flann;
+    cv::flann::GenericIndex< Distance_8U > * m_flann;
     QVector<QRgb> m_palette;
 
     void addCross(int x, int y);
