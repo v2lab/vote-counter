@@ -382,14 +382,16 @@ void SnapshotModel::trainColors()
     int centers_count = 0;
     cv::Mat input = matrixFromImage("working");
 
-    int color_index = 0;
+    // convert to a better color space...
+    input.convertTo(input, CV_32FC3, 1.0/255.0);
+    cv::cvtColor( input, input, CV_RGB2Lab );
 
-    m_palette.clear();
+    int color_index = 0;
 
     foreach(QString color, m_layers.keys()) {
         if (!m_matrices.contains(color+"_pickMask")) continue;
 
-        QVector<unsigned char> sample_pixels;
+        QVector<ColorType> sample_pixels;
         cv::Mat mask = m_matrices[color+"_pickMask"];
 
         for(int i = 0; i<input.rows; ++i)
@@ -397,50 +399,46 @@ void SnapshotModel::trainColors()
                 if (mask.at<unsigned char>(i+1,j+1))
                     // copy this pixel
                     sample_pixels
-                            << input.ptr<unsigned char>(i)[j*3]
-                            << input.ptr<unsigned char>(i)[j*3+1]
-                            << input.ptr<unsigned char>(i)[j*3+2];
+                            << input.ptr<ColorType>(i)[j*3]
+                            << input.ptr<ColorType>(i)[j*3+1]
+                            << input.ptr<ColorType>(i)[j*3+2];
 
         if (sample_pixels.size()==0) continue;
 
         qDebug() << "collected" << sample_pixels.size() / 3 << qPrintable(color) << "pixels";
 
-        cv::Mat sample(sample_pixels.size()/3, 3, CV_8UC1, sample_pixels.data());
+        cv::Mat sample(sample_pixels.size()/3, 3, CV_32FC1, sample_pixels.data());
         // cv::flann::hierarchicalClustering returns float centers even for integer features
-        cv::Mat centers(COLOR_QUANTA_COUNT, 3, CV_32F);
+        cv::Mat centers(COLOR_GRADATIONS, 3, CV_32FC1);
         cvflann::KMeansIndexParams params(
-                    COLOR_QUANTA_COUNT, // branching
+                    COLOR_GRADATIONS, // branching
                     10, // max iterations
                     cvflann::FLANN_CENTERS_KMEANSPP,
                     0);
-        int n_clusters = cv::flann::hierarchicalClustering< Distance_8U >( sample, centers, params );
-        for(int i=0; i<n_clusters; i++) {
-            QGraphicsRectItem * patch = new QGraphicsRectItem(displayer);
-            float c[] = {
-                centers.at<float>(i,0),
-                centers.at<float>(i,1),
-                centers.at<float>(i,2)
-            };
-            QColor patch_color( c[0], c[1], c[2] );
-            m_palette.append( patch_color.rgb() );
-            patch->setBrush( patch_color );
-            patch->setPen(m_pens["white"]);
-            patch->setRect(0,0,20,20);
-            patch->setPos( 10 + (color_index) * 25, 10 + i * 25 );
-        }
+        int n_clusters = cv::flann::hierarchicalClustering< ColorDistance >( sample, centers, params );
         centers_list << centers;
         centers_count += n_clusters;
         color_index++;
     }
 
-    // convert centers to unsigned char
-    m_features = cv::Mat( centers_count, 3, CV_8UC1 );
+    m_featuresLab = cv::Mat( centers_count, 3, CV_32FC1 );
     for(int i=0; i<centers_list.size(); ++i)
-        centers_list[i].convertTo( m_features.rowRange( i*COLOR_QUANTA_COUNT,(i+1)*COLOR_QUANTA_COUNT ), CV_8UC1 );
+        centers_list[i].copyTo( m_featuresLab.rowRange( i*COLOR_GRADATIONS,(i+1)*COLOR_GRADATIONS ) );
 
-    cvflann::AutotunedIndexParams params( 0.6, 1, 0, 1.0 );
+    m_featuresRGB = cv::Mat( centers_count, 3, CV_32FC1 );
+    cv::cvtColor( cv::Mat(centers_count, 1, CV_32FC3, m_featuresLab.data),
+                  cv::Mat(centers_count, 1, CV_32FC3, m_featuresRGB.data),
+                  CV_Lab2RGB );
+    m_featuresRGB.convertTo( m_featuresRGB, CV_8UC1, 255.0 );
+
+    QImage palette( m_featuresRGB.data, centers_count, 1, QImage::Format_RGB888 );
+    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(palette), displayer );
+    gpi->scale(15,15);
+
+    //cvflann::AutotunedIndexParams params( 0.6, 1, 0, 1.0 );
+    cvflann::LinearIndexParams params;
     if (m_flann) delete m_flann;
-    m_flann = new cv::flann::GenericIndex< Distance_8U > (m_features, params);
+    m_flann = new cv::flann::GenericIndex< ColorDistance > (m_featuresLab, params);
     qDebug() << "built FLANN classifier";
 
     updateViews();
@@ -454,6 +452,10 @@ void SnapshotModel::countCards()
     }
     cv::Mat input = matrixFromImage("working");
 
+    // convert to a better color space...
+    input.convertTo(input, CV_32FC3, 1.0/255.0);
+    cv::cvtColor( input, input, CV_RGB2Lab );
+
     int n_pixels = input.rows * input.cols;
     cv::Mat indices( input.rows, input.cols, CV_32SC1 );
     cv::Mat dists( input.rows, input.cols, CV_32FC1 );
@@ -463,7 +465,7 @@ void SnapshotModel::countCards()
             dists_1 = dists.reshape( 1, n_pixels );
 
     qDebug() << "K-Nearest Neighbout Search";
-    cvflann::SearchParams params(cvflann::FLANN_CHECKS_UNLIMITED, 0, true);
+    cvflann::SearchParams params(cvflann::FLANN_CHECKS_UNLIMITED, 0);
     m_flann->knnSearch( input_1, indices_1, dists_1, 1, params);
     qDebug() << "K-Nearest Neighbout Search done";
 
@@ -471,7 +473,7 @@ void SnapshotModel::countCards()
     m_matrices["dists"] = dists;
 
     cv::Mat cards_mask;
-    float thresh = 2000.0;
+    float thresh = 1000.0;
     cv::threshold(dists, cards_mask, thresh, 0, cv::THRESH_TRUNC);
     cards_mask.convertTo( cards_mask, CV_8UC1, - 255.0 / thresh, 255.0 );
 
@@ -485,9 +487,9 @@ void SnapshotModel::countCards()
     for(int i=0; i<n_pixels; i++) {
         if (cards_mask.data[i]) {
             int index = indices.ptr<int>(0)[i];
-            vision.data[i*3] = m_features.data[ index*3 ];
-            vision.data[i*3+1] = m_features.data[ index*3 + 1 ];
-            vision.data[i*3+2] = m_features.data[ index*3 + 2 ];
+            vision.data[i*3] = m_featuresRGB.data[ index*3 ];
+            vision.data[i*3+1] = m_featuresRGB.data[ index*3 + 1 ];
+            vision.data[i*3+2] = m_featuresRGB.data[ index*3 + 2 ];
         }
     }
 

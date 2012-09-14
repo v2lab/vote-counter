@@ -15,7 +15,7 @@ public:
         MASK,
         COUNT
     };
-    static const int COLOR_QUANTA_COUNT = 7;
+    static const int COLOR_GRADATIONS = 3;
     explicit SnapshotModel(const QString& path, QObject *parent);
     ~SnapshotModel();
 
@@ -45,10 +45,11 @@ protected:
     QMap< QString, QGraphicsItem *> m_layers;
     QMap< QString, QGraphicsItem *> m_displayers;
     QMap< QString, cv::Mat > m_matrices;
-    typedef cv::flann::L2<unsigned char> Distance_8U;
-    cv::Mat m_features;
-    cv::flann::GenericIndex< Distance_8U > * m_flann;
-    QVector<QRgb> m_palette;
+    cv::Mat m_featuresLab, m_featuresRGB;
+
+    typedef float ColorType;
+    typedef cv::flann::L2<ColorType> ColorDistance;
+    cv::flann::GenericIndex< ColorDistance > * m_flann;
 
     void addCross(int x, int y);
     void updateViews();
