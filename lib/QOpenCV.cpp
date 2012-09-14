@@ -10,7 +10,7 @@ QImage wrapImage( const cv::Mat& cvmat)
 
     if (cvmat.depth() == CV_8U && cvmat.channels() == 3) {
         QImage img((const uchar*)cvmat.data, width, height, cvmat.step.p[0], QImage::Format_RGB888);
-        return img.rgbSwapped();
+        return img;
     } else if (cvmat.depth() == CV_8U && cvmat.channels() == 1) {
         QImage img((const uchar*)cvmat.data, width, height, cvmat.step.p[0], QImage::Format_Indexed8);
         img.setColorTable(greyTable());
