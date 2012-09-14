@@ -46,6 +46,7 @@ protected:
     QMap< QString, QGraphicsItem *> m_displayers;
     QMap< QString, cv::Mat > m_matrices;
     typedef cv::flann::L2<float> Distance_F32;
+    cv::Mat m_features;
     cv::flann::GenericIndex< Distance_F32 > * m_flann;
     QVector<QRgb> m_palette;
 

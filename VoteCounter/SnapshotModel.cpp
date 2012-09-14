@@ -433,13 +433,13 @@ void SnapshotModel::trainColors()
         color_index++;
     }
 
-    cv::Mat features( centers_count, 3, CV_32F );
+    m_features = cv::Mat( centers_count, 3, CV_32F );
     for(int i=0; i<centers_list.size(); ++i)
-        centers_list[i].copyTo( features.rowRange( i*COLOR_QUANTA_COUNT,(i+1)*COLOR_QUANTA_COUNT ) );
+        centers_list[i].copyTo( m_features.rowRange( i*COLOR_QUANTA_COUNT,(i+1)*COLOR_QUANTA_COUNT ) );
 
     cvflann::LinearIndexParams params;
     if (m_flann) delete m_flann;
-    m_flann = new cv::flann::GenericIndex< Distance_F32 > (features, params);
+    m_flann = new cv::flann::GenericIndex< Distance_F32 > (m_features, params);
     qDebug() << "built FLANN classifier";
 
     updateViews();
@@ -469,7 +469,6 @@ void SnapshotModel::countCards()
     m_matrices["indices"] = indices;
     m_matrices["dists"] = dists;
 
-
     cv::Mat cards_mask;
     float thresh = 2700.0;
     cv::threshold(dists, cards_mask, thresh, 0, cv::THRESH_TRUNC);
@@ -482,16 +481,18 @@ void SnapshotModel::countCards()
     QGraphicsItemGroup * displayer = new QGraphicsItemGroup(0,m_scene);
     m_displayers["knn-display"] = displayer;
 
-    setImage("cards-mask", wrapImage(cards_mask));
-    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(image("cards-mask",true)), displayer );
-    gpi->scale( 0.5, 0.5 );
+    //setImage("cards-mask", wrapImage(cards_mask));
+    QImage dist_image( (unsigned char *)cards_mask.data, cards_mask.cols, cards_mask.rows, QImage::Format_Indexed8 );
+    dist_image.setColorTable(greyTable());
+    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(dist_image), displayer );
+    gpi->scale( 0.47, 0.47 );
 
     indices.convertTo(indices,CV_8UC1);
-    QImage indexed( (unsigned char *)indices.data, indices.cols, indices.rows, QImage::Format_Indexed8 );
-    indexed.setColorTable(m_palette);
-    gpi = new QGraphicsPixmapItem( QPixmap::fromImage(indexed), displayer );
-    gpi->scale( 0.5, 0.5 );
-    gpi->moveBy( indexed.width() / 2, 0);
+    QImage index_image( (unsigned char *)indices.data, indices.cols, indices.rows, QImage::Format_Indexed8 );
+    index_image.setColorTable(m_palette);
+    gpi = new QGraphicsPixmapItem( QPixmap::fromImage(index_image), displayer );
+    gpi->scale( 0.47, 0.47 );
+    gpi->moveBy( 0.53 * index_image.width(), 0);
 
     updateViews();
 }
