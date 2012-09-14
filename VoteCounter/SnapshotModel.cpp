@@ -438,7 +438,7 @@ void SnapshotModel::trainColors()
     for(int i=0; i<centers_list.size(); ++i)
         centers_list[i].convertTo( m_features.rowRange( i*COLOR_QUANTA_COUNT,(i+1)*COLOR_QUANTA_COUNT ), CV_8UC1 );
 
-    cvflann::LinearIndexParams params;
+    cvflann::AutotunedIndexParams params( 0.6, 1, 0, 1.0 );
     if (m_flann) delete m_flann;
     m_flann = new cv::flann::GenericIndex< Distance_8U > (m_features, params);
     qDebug() << "built FLANN classifier";

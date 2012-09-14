@@ -15,7 +15,7 @@ public:
         MASK,
         COUNT
     };
-    static const int COLOR_QUANTA_COUNT = 3;
+    static const int COLOR_QUANTA_COUNT = 7;
     explicit SnapshotModel(const QString& path, QObject *parent);
     ~SnapshotModel();
 
