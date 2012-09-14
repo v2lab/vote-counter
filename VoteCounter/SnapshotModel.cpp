@@ -139,6 +139,7 @@ void SnapshotModel::setTrainMode(const QString &tag)
 void SnapshotModel::addCross(int x, int y)
 {
     QGraphicsLineItem * cross = new QGraphicsLineItem(-3,-3,+3,+3, layer(m_color));
+    cross->setZValue(5);
     cross->setPen(m_pens["thick-red"]);
     cross->setPos(x, y);
 
@@ -299,6 +300,7 @@ void SnapshotModel::selectByFlood(int x, int y)
         QPolygon polygon = toQPolygon(approx);
         QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( polygon, colorLayer );
         poly_item->setPen(m_pens["thick-red"]);
+        poly_item->setZValue(5);
 
         poly_item = new QGraphicsPolygonItem( polygon, poly_item );
         poly_item->setPen(m_pens["white"]);
@@ -357,6 +359,17 @@ void SnapshotModel::unpick(int x, int y)
     updateViews();
 }
 
+cv::Mat SnapshotModel::matrixFromImage(const QString &tag)
+{
+    if (m_images.contains(tag)) {
+        QImage q_image = image(tag);
+        int format = q_image.format()==QImage::Format_Indexed8 ? CV_8UC1 : CV_8UC3;
+        return cv::Mat(q_image.height(), q_image.width(), format, (void*)q_image.constBits());
+    } else {
+        return cv::Mat();
+    }
+}
+
 void SnapshotModel::trainColors()
 {
     if (m_displayers.contains("samples-display")) {
@@ -370,6 +383,9 @@ void SnapshotModel::trainColors()
     cv::Mat input = matrixFromImage("working");
 
     int color_index = 0;
+
+    m_palette.clear();
+
     foreach(QString color, m_layers.keys()) {
         if (!m_matrices.contains(color+"_pickMask")) continue;
 
@@ -390,9 +406,9 @@ void SnapshotModel::trainColors()
         qDebug() << "collected" << sample_pixels.size() / 3 << qPrintable(color) << "pixels";
 
         cv::Mat sample(sample_pixels.size()/3, 3, CV_8UC1, sample_pixels.data());
-        cv::Mat centers(NUM_CLUSTERS, 3, CV_32F);
+        cv::Mat centers(COLOR_QUANTA_COUNT, 3, CV_32F);
         cvflann::KMeansIndexParams params(
-                    NUM_CLUSTERS, // branching
+                    COLOR_QUANTA_COUNT, // branching
                     10, // max iterations
                     cvflann::FLANN_CENTERS_KMEANSPP,
                     0);
@@ -402,6 +418,7 @@ void SnapshotModel::trainColors()
             QColor patch_color( centers.at<float>(i,0),
                                 centers.at<float>(i,1),
                                 centers.at<float>(i,2) );
+            m_palette.append( patch_color.rgb() );
             patch->setBrush( patch_color );
             patch->setPen(m_pens["white"]);
             patch->setRect(0,0,20,20);
@@ -415,25 +432,16 @@ void SnapshotModel::trainColors()
     // have to convert features to uint8
     cv::Mat features( centers_count, 3, CV_8UC1 );
     for(int i=0; i<centers_list.size(); ++i)
-        centers_list[i].convertTo( features.rowRange( i*NUM_CLUSTERS,(i+1)*NUM_CLUSTERS ), CV_8UC1 );
+        centers_list[i].convertTo( features.rowRange( i*COLOR_QUANTA_COUNT,(i+1)*COLOR_QUANTA_COUNT ), CV_8UC1, 255.0 );
 
-    cvflann::AutotunedIndexParams params(1, 1, -1, 1);
+    ///cvflann::AutotunedIndexParams params(1, 1, -1, 1);
+    //cvflann::KMeansIndexParams params( color_index, 11, cvflann::FLANN_CENTERS_KMEANSPP, 0 );
+    cvflann::LinearIndexParams params;
     if (m_flann) delete m_flann;
     m_flann = new cv::flann::GenericIndex< Distance_U8 > (features, params);
     qDebug() << "built FLANN classifier";
 
     updateViews();
-}
-
-cv::Mat SnapshotModel::matrixFromImage(const QString &tag)
-{
-    if (m_images.contains(tag)) {
-        QImage q_image = image(tag);
-        int format = q_image.format()==QImage::Format_Indexed8 ? CV_8UC1 : CV_8UC3;
-        return cv::Mat(q_image.height(), q_image.width(), format, (void*)q_image.constBits());
-    } else {
-        return cv::Mat();
-    }
 }
 
 void SnapshotModel::countCards()
@@ -442,7 +450,6 @@ void SnapshotModel::countCards()
         qDebug() << "Teach me the colors first";
         return;
     }
-    cvflann::SearchParams params(-1);
     cv::Mat input = matrixFromImage("working");
     int n_pixels = input.rows * input.cols;
     cv::Mat indices( input.rows, input.cols, CV_32SC1 );
@@ -453,11 +460,11 @@ void SnapshotModel::countCards()
             dists_1 = dists.reshape( 1, n_pixels );
 
     qDebug() << "K-Nearest Neighbout Search";
+    cvflann::SearchParams params(cvflann::FLANN_CHECKS_UNLIMITED, 0);
     m_flann->knnSearch( input_1, indices_1, dists_1, 1, params);
     qDebug() << "K-Nearest Neighbout Search done";
 
-
-    m_matrices["indices"] = indices / NUM_CLUSTERS;
+    m_matrices["indices"] = indices / COLOR_QUANTA_COUNT;
     m_matrices["dists"] = dists;
 
     cv::Mat cards_mask;
@@ -468,5 +475,13 @@ void SnapshotModel::countCards()
     setImage("cards-mask", wrapImage(cards_mask));
 
     QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(image("cards-mask",true)), 0, m_scene );
+
+    /*
+    indices.convertTo(indices,CV_8UC1);
+    QImage indexed( (unsigned char *)indices.data, indices.cols, indices.rows, QImage::Format_Indexed8 );
+    indexed.setColorTable(m_palette);
+    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(indexed), 0, m_scene );
+    */
+
     updateViews();
 }

@@ -15,7 +15,7 @@ public:
         MASK,
         COUNT
     };
-    static const int NUM_CLUSTERS = 5;
+    static const int COLOR_QUANTA_COUNT = 5;
     explicit SnapshotModel(const QString& path, QObject *parent);
     ~SnapshotModel();
 
@@ -47,6 +47,7 @@ protected:
     QMap< QString, cv::Mat > m_matrices;
     typedef cv::flann::L2<unsigned char> Distance_U8;
     cv::flann::GenericIndex< Distance_U8 > * m_flann;
+    QVector<QRgb> m_palette;
 
     void addCross(int x, int y);
     void updateViews();
