@@ -220,7 +220,7 @@ void SnapshotModel::clearLayer()
 void SnapshotModel::selectByFlood(int x, int y)
 {
     // flood fill inside roi
-    cv::Mat input = getMatrix("input");
+    cv::Mat input = getMatrix("lab");
     cv::Mat mask = getMatrix(m_color+"_pickMask");
     cv::Rect bounds;
 
