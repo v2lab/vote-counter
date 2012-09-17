@@ -19,8 +19,10 @@ public:
     explicit SnapshotModel(const QString& path, QObject *parent);
     ~SnapshotModel();
 
-    QImage image(const QString& tag, bool mask = false);
+    QImage getImage(const QString& tag);
+    cv::Mat getMatrix(const QString& tag);
     void setImage(const QString& tag, const QImage& img);
+    void setMatrix(const QString& tag, const cv::Mat& matrix);
 
     QGraphicsScene * scene() { return m_scene; }
 signals:
@@ -35,8 +37,15 @@ public slots:
     void countCards();
 
 protected:
+    static bool s_staticInitialized;
+    static QSet< QString > s_cacheableImages;
+    static QSet< QString > s_resizedImages;
+
+    QString m_originalPath;
     QDir m_cacheDir;
     QMap< QString, QImage > m_images;
+    QMap< QString, cv::Mat > m_matrices;
+
     QGraphicsScene * m_scene;
     Mode m_mode;
     QString m_color;
@@ -44,8 +53,6 @@ protected:
     QMap< QString, QPen > m_pens;
     QMap< QString, QGraphicsItem *> m_layers;
     QMap< QString, QGraphicsItem *> m_displayers;
-    QMap< QString, cv::Mat > m_matrices;
-    cv::Mat m_featuresLab, m_featuresRGB;
 
     typedef float ColorType;
     typedef cv::flann::L2<ColorType> ColorDistance;
@@ -57,7 +64,6 @@ protected:
     void loadData();
     QGraphicsItem * layer(const QString& name);
     void selectByFlood(int x, int y);
-    cv::Mat matrixFromImage(const QString& tag);
 
     virtual bool eventFilter(QObject *, QEvent *);
 };

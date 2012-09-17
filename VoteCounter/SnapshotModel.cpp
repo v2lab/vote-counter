@@ -18,10 +18,24 @@ using namespace QtJson;
 #include <QEvent>
 #include <QGraphicsSceneMouseEvent>
 
+bool SnapshotModel::s_staticInitialized = false;
+QSet< QString > SnapshotModel::s_cacheableImages;
+QSet< QString > SnapshotModel::s_resizedImages;
+
 SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
-    QObject(parent), m_scene(new QGraphicsScene(this)),
-    m_mode(INERT), m_color("green"), m_flann(0)
+    QObject(parent),
+    m_originalPath(path),
+    m_scene(new QGraphicsScene(this)),
+    m_mode(INERT),
+    m_color("green"),
+    m_flann(0)
 {
+    if (!s_staticInitialized) {
+        s_cacheableImages << "input";
+        s_resizedImages << "input";
+        s_staticInitialized = true;
+    }
+
     m_pens["white"] = QPen(Qt::white);
     m_pens["thick-red"] = QPen(Qt::red, 2);
 
@@ -39,19 +53,8 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
         parent_dir.mkdir( m_cacheDir.dirName() );
     }
 
-    // try to load cached working image
-    int limit = projectSettings().value("size_limit", 640).toInt();
-    QImage working = image("working");
-    if (working.isNull() || std::max(working.width(), working.height()) != limit ) {
-        // no working image: create
-        qDebug() << "scaling down" << qPrintable(path) << "to" << limit;
-        QImage orig(path);
-        working = orig.scaled( limit, limit, Qt::KeepAspectRatio, Qt::SmoothTransformation );
-        setImage("working", working);
-    }
-
     // add the image to the scene
-    m_scene->addPixmap( QPixmap::fromImage( working ) );
+    m_scene->addPixmap( QPixmap::fromImage( getImage("input") ) );
     m_scene->installEventFilter(this);
 
     loadData();
@@ -63,30 +66,6 @@ SnapshotModel::~SnapshotModel()
 {
     qDebug() << "closing snapshot...";
     saveData();
-}
-
-QImage SnapshotModel::image(const QString &tag, bool mask)
-{
-    if (!m_images.contains(tag)) {
-         QString path = m_cacheDir.filePath(tag + ".png");
-         QImage img(path);
-         if (img.isNull())
-             return img;
-         if (mask)
-             img = img.convertToFormat(QImage::Format_Indexed8, greyTable());
-         else if (img.format() != QImage::Format_RGB888) {
-             img = img.convertToFormat(QImage::Format_RGB888);
-         }
-         m_images[tag] = img;
-    }
-    return m_images[tag];
-}
-
-void SnapshotModel::setImage(const QString &tag, const QImage &img)
-{
-    m_images[tag] = img;
-    QString path = m_cacheDir.filePath(tag + ".png");
-    img.save( path );
 }
 
 bool SnapshotModel::eventFilter(QObject * target, QEvent * event)
@@ -113,10 +92,10 @@ bool SnapshotModel::eventFilter(QObject * target, QEvent * event)
 
 void SnapshotModel::pick(int x, int y)
 {
-    QImage working = image("working");
+    QImage input = getImage("input");
 
     if (m_mode == TRAIN) {
-        if (working.rect().contains(x,y)) {
+        if (input.rect().contains(x,y)) {
             addCross(x,y);
             selectByFlood(x,y);
             m_colorPicks[m_color].append( QPoint(x,y) ); // this is for saving / restoring
@@ -241,14 +220,8 @@ void SnapshotModel::clearLayer()
 void SnapshotModel::selectByFlood(int x, int y)
 {
     // flood fill inside roi
-    QImage q_input = image("working");
-    cv::Mat input(q_input.height(), q_input.width(), CV_8UC3, (void*)q_input.constBits());
-
-    if (!m_matrices.contains(m_color+"_pickMask")) {
-        m_matrices[m_color+"_pickMask"] = cv::Mat( input.rows+2, input.cols+2, CV_8UC1, cv::Scalar(0));
-    }
-    cv::Mat mask = m_matrices[m_color+"_pickMask"];
-
+    cv::Mat input = getMatrix("input");
+    cv::Mat mask = getMatrix(m_color+"_pickMask");
     cv::Rect bounds;
 
     int pf = projectSettings().value("pick_fuzz").toInt();
@@ -276,7 +249,7 @@ void SnapshotModel::selectByFlood(int x, int y)
         }
     }
     // intersect with the image
-    q_bounds = q_bounds.intersected( image("working").rect() );
+    q_bounds = q_bounds.intersected( getImage("input").rect() );
 
     bounds = toCv(q_bounds);
 
@@ -345,7 +318,7 @@ void SnapshotModel::unpick(int x, int y)
     }
 
     // 3. draw this contour onto the mask
-    cv::Mat mask = m_matrices[color+"_pickMask"];
+    cv::Mat mask = getMatrix(color+"_pickMask");
     std::vector< cv::Point > contour = toCvInt( unpicked_poly->polygon() );
     cv::Point * pts[] = { contour.data() };
     int npts[] = { contour.size() };
@@ -359,17 +332,6 @@ void SnapshotModel::unpick(int x, int y)
     updateViews();
 }
 
-cv::Mat SnapshotModel::matrixFromImage(const QString &tag)
-{
-    if (m_images.contains(tag)) {
-        QImage q_image = image(tag);
-        int format = q_image.format()==QImage::Format_Indexed8 ? CV_8UC1 : CV_8UC3;
-        return cv::Mat(q_image.height(), q_image.width(), format, (void*)q_image.constBits());
-    } else {
-        return cv::Mat();
-    }
-}
-
 void SnapshotModel::trainColors()
 {
     if (m_displayers.contains("samples-display")) {
@@ -380,11 +342,7 @@ void SnapshotModel::trainColors()
 
     QVector<cv::Mat> centers_list;
     int centers_count = 0;
-    cv::Mat input = matrixFromImage("working");
-
-    // convert to a better color space...
-    input.convertTo(input, CV_32FC3, 1.0/255.0);
-    cv::cvtColor( input, input, CV_RGB2Lab );
+    cv::Mat input = getMatrix("lab");
 
     int color_index = 0;
 
@@ -392,7 +350,7 @@ void SnapshotModel::trainColors()
         if (!m_matrices.contains(color+"_pickMask")) continue;
 
         QVector<ColorType> sample_pixels;
-        cv::Mat mask = m_matrices[color+"_pickMask"];
+        cv::Mat mask = getMatrix(color+"_pickMask");
 
         for(int i = 0; i<input.rows; ++i)
             for(int j = 0; j<input.cols; ++j)
@@ -421,24 +379,20 @@ void SnapshotModel::trainColors()
         color_index++;
     }
 
-    m_featuresLab = cv::Mat( centers_count, 3, CV_32FC1 );
+    cv::Mat featuresLab = cv::Mat( centers_count, 3, CV_32FC1 );
     for(int i=0; i<centers_list.size(); ++i)
-        centers_list[i].copyTo( m_featuresLab.rowRange( i*COLOR_GRADATIONS,(i+1)*COLOR_GRADATIONS ) );
+        centers_list[i].copyTo( featuresLab.rowRange( i*COLOR_GRADATIONS,(i+1)*COLOR_GRADATIONS ) );
+    setMatrix("featuresLab", featuresLab);
 
-    m_featuresRGB = cv::Mat( centers_count, 3, CV_32FC1 );
-    cv::cvtColor( cv::Mat(centers_count, 1, CV_32FC3, m_featuresLab.data),
-                  cv::Mat(centers_count, 1, CV_32FC3, m_featuresRGB.data),
-                  CV_Lab2RGB );
-    m_featuresRGB.convertTo( m_featuresRGB, CV_8UC1, 255.0 );
-
-    QImage palette( m_featuresRGB.data, centers_count, 1, QImage::Format_RGB888 );
+    cv::Mat featuresRGB = getMatrix("featuresRGB");
+    QImage palette( featuresRGB.data, centers_count, 1, QImage::Format_RGB888 );
     QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(palette), displayer );
     gpi->scale(15,15);
 
-    //cvflann::AutotunedIndexParams params( 0.6, 1, 0, 1.0 );
-    cvflann::LinearIndexParams params;
+    cvflann::AutotunedIndexParams params( 0.8, 1, 0, 1.0 );
+    //cvflann::LinearIndexParams params;
     if (m_flann) delete m_flann;
-    m_flann = new cv::flann::GenericIndex< ColorDistance > (m_featuresLab, params);
+    m_flann = new cv::flann::GenericIndex< ColorDistance > (featuresLab, params);
     qDebug() << "built FLANN classifier";
 
     updateViews();
@@ -450,11 +404,7 @@ void SnapshotModel::countCards()
         qDebug() << "Teach me the colors first";
         return;
     }
-    cv::Mat input = matrixFromImage("working");
-
-    // convert to a better color space...
-    input.convertTo(input, CV_32FC3, 1.0/255.0);
-    cv::cvtColor( input, input, CV_RGB2Lab );
+    cv::Mat input = getMatrix("lab");
 
     int n_pixels = input.rows * input.cols;
     cv::Mat indices( input.rows, input.cols, CV_32SC1 );
@@ -482,14 +432,15 @@ void SnapshotModel::countCards()
         delete m_displayers["knn-display"];
     }
 
-    // poor man's lut
+    // poor man's LookUpTable
     cv::Mat vision = cv::Mat( indices.rows, indices.cols, CV_8UC3, cv::Scalar(0,0,0,0) );
+    cv::Mat lut = getMatrix("featuresRGB");
     for(int i=0; i<n_pixels; i++) {
         if (cards_mask.data[i]) {
             int index = indices.ptr<int>(0)[i];
-            vision.data[i*3] = m_featuresRGB.data[ index*3 ];
-            vision.data[i*3+1] = m_featuresRGB.data[ index*3 + 1 ];
-            vision.data[i*3+2] = m_featuresRGB.data[ index*3 + 2 ];
+            vision.data[i*3] = lut.data[ index*3 ];
+            vision.data[i*3+1] = lut.data[ index*3 + 1 ];
+            vision.data[i*3+2] = lut.data[ index*3 + 2 ];
         }
     }
 
@@ -500,3 +451,82 @@ void SnapshotModel::countCards()
 
     updateViews();
 }
+
+QImage SnapshotModel::getImage(const QString &tag)
+{
+    if (!m_images.contains(tag)) {
+        QImage img;
+        int size_limit = projectSettings().value("size_limit", 640).toInt();
+
+        if (s_cacheableImages.contains(tag)) {
+            // if cacheable - see if we can load it
+            QString path = m_cacheDir.filePath(tag + ".png");
+            if (img.load(path)) {
+                if (tag.endsWith("mask",Qt::CaseInsensitive))
+                    img = img.convertToFormat(QImage::Format_Indexed8, greyTable());
+                else
+                    img = img.convertToFormat(QImage::Format_RGB888);
+            }
+
+            // see if size is compatible
+            if (s_resizedImages.contains(tag) && !img.isNull() && std::max(img.width(), img.height()) != size_limit)
+                img = QImage();
+        }
+        if (img.isNull()) {
+            if (tag == "input") {
+                img = QImage( m_originalPath )
+                        .scaled( size_limit, size_limit, Qt::KeepAspectRatio, Qt::SmoothTransformation )
+                        .convertToFormat(QImage::Format_RGB888);
+            }
+        }
+
+        setImage(tag,img);
+    }
+
+    return m_images[tag];
+}
+
+cv::Mat SnapshotModel::getMatrix(const QString &tag)
+{
+    if (!m_matrices.contains(tag)) {
+        cv::Mat matrix;
+        // create some well known matrices
+        QSize qsz = getImage("input").size();
+        cv::Size inputSize = cv::Size( qsz.width(), qsz.height() );
+
+        if (tag == "lab") {
+            cv::Mat input = getMatrix("input");
+            input.convertTo(matrix, CV_32FC3, 1.0/255.0);
+            cv::cvtColor( matrix, matrix, CV_RGB2Lab );
+        } else if (tag.endsWith("_pickMask")) {
+            matrix = cv::Mat(inputSize.height+2, inputSize.width+2, CV_8UC1, cv::Scalar(0));
+        } else if (tag == "featuresRGB") {
+            cv::Mat featuresLab = getMatrix("featuresLab");
+            matrix = cv::Mat( featuresLab.rows, 3, CV_32FC1 );
+            cv::cvtColor( cv::Mat(featuresLab.rows, 1, CV_32FC3, featuresLab.data),
+                          cv::Mat(featuresLab.rows, 1, CV_32FC3, matrix.data),
+                          CV_Lab2RGB );
+            matrix.convertTo( matrix, CV_8UC1, 255.0 );
+        } else if (tag == "input") {
+            QImage img = getImage(tag);
+            matrix = cv::Mat( img.height(), img.width(), CV_8UC3, (void*)img.constBits() );
+        } else if (tag == "cacheable_mask") { // <-- FIXME just an example
+            QImage img = getImage(tag);
+            matrix = cv::Mat( img.height(), img.width(), CV_8UC1, (void*)img.constBits() );
+        }
+
+        setMatrix(tag, matrix);
+    }
+    return m_matrices[tag];
+}
+
+void SnapshotModel::setMatrix(const QString &tag, const cv::Mat &matrix)
+{
+    m_matrices[tag] = matrix;
+}
+
+void SnapshotModel::setImage(const QString &tag, const QImage &img)
+{
+    m_images[tag] = img;
+}
+
