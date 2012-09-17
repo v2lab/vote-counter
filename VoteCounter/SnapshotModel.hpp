@@ -20,7 +20,8 @@ public:
         ITEM_NAME,
     };
 
-    static const int COLOR_GRADATIONS = 3;
+    static const int COLOR_GRADATIONS = 5;
+
     explicit SnapshotModel(const QString& path, QObject *parent);
     ~SnapshotModel();
 
@@ -49,7 +50,7 @@ protected:
     static QSet< QString > s_colorNames;
 
     QString m_originalPath;
-    QDir m_cacheDir;
+    QDir m_parentDir, m_cacheDir;
     QMap< QString, QImage > m_images;
     QMap< QString, cv::Mat > m_matrices;
 
@@ -70,6 +71,8 @@ protected:
     void loadData();
     QGraphicsItem * layer(const QString& name);
     void selectByFlood(int x, int y);
+    void showFeatures();
+    void learnFeatures();
 
     virtual bool eventFilter(QObject *, QEvent *);
 };

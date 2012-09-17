@@ -40,7 +40,6 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
 
     m_pens["white"] = QPen(Qt::white);
     m_pens["thick-red"] = QPen(Qt::red, 2);
-
     m_scene->setObjectName("scene"); // so we can autoconnect signals
 
     qDebug() << "Loading" << qPrintable(path);
@@ -48,11 +47,11 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     // check if cache is present, create otherwise
     QFileInfo fi(path);
 
-    QDir parent_dir = fi.absoluteDir();
-    m_cacheDir = parent_dir.filePath( fi.baseName() + ".cache" );
+    m_parentDir = fi.absoluteDir();
+    m_cacheDir = m_parentDir.filePath( fi.baseName() + ".cache" );
     if (!m_cacheDir.exists()) {
         qDebug() << "creating cache directory" << qPrintable(m_cacheDir.path());
-        parent_dir.mkdir( m_cacheDir.dirName() );
+        m_parentDir.mkdir( m_cacheDir.dirName() );
     }
 
     // add the image to the scene
@@ -60,6 +59,24 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     m_scene->installEventFilter(this);
 
     loadData();
+
+    // try to load flann
+    QString features_file = m_parentDir.filePath("features.png");
+    QString flann_file = m_parentDir.filePath("flann.dat");
+    if ( QFileInfo(features_file).exists() && QFileInfo(flann_file).exists()) {
+        cv::Mat featuresRGB = cv::imread( features_file.toStdString(), -1 );
+        cv::Mat featuresLab;
+        featuresRGB.convertTo(featuresLab, CV_32FC3, 1.0/255.0);
+        cv::cvtColor( featuresLab, featuresLab, CV_RGB2Lab );
+
+        setMatrix("featuresRGB", cv::Mat(featuresRGB.rows, 3, CV_8UC1, featuresRGB.data).clone());
+        setMatrix("featuresLab", cv::Mat(featuresLab.rows, 3, CV_32FC1, featuresLab.data).clone());
+
+        cvflann::SavedIndexParams params(flann_file.toStdString());
+        m_flann = new cv::flann::GenericIndex< ColorDistance >(getMatrix("featuresLab"), params);
+
+        showFeatures();
+    }
 
     qDebug() << qPrintable(path) << "loaded";
 }
@@ -392,19 +409,14 @@ void SnapshotModel::trainColors()
     m_matrices.remove("featuresRGB");
     setMatrix("featuresLab", featuresLab);
 
-    cv::Mat featuresRGB = getMatrix("featuresRGB");
-    QImage palette( featuresRGB.data, centers_count, 1, QImage::Format_RGB888 );
-    clearLayer("train.features");
-    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(palette), layer("train.features") );
-    gpi->scale(15,15);
+    showFeatures();
 
-    cvflann::AutotunedIndexParams params( 0.8, 1, 0, 1.0 );
-    //cvflann::LinearIndexParams params;
-    if (m_flann) delete m_flann;
-    m_flann = new cv::flann::GenericIndex< ColorDistance > (featuresLab, params);
+    learnFeatures();
+
     qDebug() << "built FLANN classifier";
 
     updateViews();
+
 }
 
 void SnapshotModel::countCards()
@@ -454,6 +466,7 @@ void SnapshotModel::countCards()
     QImage vision_image( (unsigned char *)vision.data, vision.cols, vision.rows, QImage::Format_RGB888 );
     QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(vision_image), layer("count.knn-result") );
 
+    showFeatures();
     updateViews();
 }
 
@@ -550,5 +563,29 @@ void SnapshotModel::setMode(SnapshotModel::Mode m)
 {
     m_mode = m;
     updateViews();
+}
+
+void SnapshotModel::showFeatures()
+{
+    cv::Mat featuresRGB = getMatrix("featuresRGB");
+    QImage palette( featuresRGB.data, featuresRGB.rows, 1, QImage::Format_RGB888 );
+    clearLayer("train.features");
+    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(palette), layer("train.features") );
+    gpi->scale(15,15);
+}
+
+void SnapshotModel::learnFeatures()
+{
+    cvflann::AutotunedIndexParams params( 0.8, 1, 0, 1.0 );
+    //cvflann::LinearIndexParams params;
+    if (m_flann) delete m_flann;
+    m_flann = new cv::flann::GenericIndex< ColorDistance > (getMatrix("featuresLab"), params);
+
+    QString features_file = m_parentDir.filePath("features.png");
+    cv::imwrite( features_file.toStdString(), cv::Mat(getMatrix("featuresRGB").rows, 1, CV_8UC3, getMatrix("featuresRGB").data) );
+
+    QString flann_file = m_parentDir.filePath("flann.dat");
+    m_flann->save( flann_file.toStdString() );
+
 }
 
