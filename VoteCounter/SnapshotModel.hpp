@@ -15,6 +15,11 @@ public:
         MASK,
         COUNT
     };
+
+    enum ItemData {
+        ITEM_NAME,
+    };
+
     static const int COLOR_GRADATIONS = 3;
     explicit SnapshotModel(const QString& path, QObject *parent);
     ~SnapshotModel();
@@ -28,11 +33,12 @@ public:
 signals:
 
 public slots:
-    void setMode(Mode m) { m_mode = m; }
+    void setMode(Mode m);
     void setTrainMode(const QString& tag);
     void pick(int x, int y);
     void unpick(int x, int y);
-    void clearLayer();
+    void clearLayer(const QString& name);
+    void clearCurrentTrainLayer();
     void trainColors();
     void countCards();
 
@@ -40,6 +46,7 @@ protected:
     static bool s_staticInitialized;
     static QSet< QString > s_cacheableImages;
     static QSet< QString > s_resizedImages;
+    static QSet< QString > s_colorNames;
 
     QString m_originalPath;
     QDir m_cacheDir;
@@ -52,7 +59,6 @@ protected:
     QMap< QString, QList< QPoint > > m_colorPicks;
     QMap< QString, QPen > m_pens;
     QMap< QString, QGraphicsItem *> m_layers;
-    QMap< QString, QGraphicsItem *> m_displayers;
 
     typedef float ColorType;
     typedef cv::flann::L2<ColorType> ColorDistance;

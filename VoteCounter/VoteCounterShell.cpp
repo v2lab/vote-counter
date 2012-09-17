@@ -142,7 +142,7 @@ void VoteCounterShell::on_trainModeGroup_buttonClicked( QAbstractButton * button
 void VoteCounterShell::on_clearTrainLayer_clicked()
 {
     if (!m_snapshot) return;
-    m_snapshot->clearLayer();
+    m_snapshot->clearCurrentTrainLayer();
 }
 
 void VoteCounterShell::on_learn_clicked()

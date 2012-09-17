@@ -21,6 +21,7 @@ using namespace QtJson;
 bool SnapshotModel::s_staticInitialized = false;
 QSet< QString > SnapshotModel::s_cacheableImages;
 QSet< QString > SnapshotModel::s_resizedImages;
+QSet< QString > SnapshotModel::s_colorNames;
 
 SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     QObject(parent),
@@ -33,6 +34,7 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     if (!s_staticInitialized) {
         s_cacheableImages << "input";
         s_resizedImages << "input";
+        s_colorNames << "green" << "pink" << "yellow";
         s_staticInitialized = true;
     }
 
@@ -96,9 +98,10 @@ void SnapshotModel::pick(int x, int y)
 
     if (m_mode == TRAIN) {
         if (input.rect().contains(x,y)) {
+            m_colorPicks[m_color].append( QPoint(x,y) ); // this is for saving / restoring
             addCross(x,y);
             selectByFlood(x,y);
-            m_colorPicks[m_color].append( QPoint(x,y) ); // this is for saving / restoring
+            updateViews();
         }
     }
 }
@@ -117,8 +120,7 @@ void SnapshotModel::setTrainMode(const QString &tag)
 
 void SnapshotModel::addCross(int x, int y)
 {
-    QGraphicsLineItem * cross = new QGraphicsLineItem(-3,-3,+3,+3, layer(m_color));
-    cross->setZValue(5);
+    QGraphicsLineItem * cross = new QGraphicsLineItem(-3,-3,+3,+3, layer( QString("train.%1.crosses").arg(m_color)));
     cross->setPen(m_pens["thick-red"]);
     cross->setPos(x, y);
 
@@ -129,17 +131,27 @@ void SnapshotModel::addCross(int x, int y)
     l->setPen(m_pens["white"]);
     l = new QGraphicsLineItem(+2,+2,-2,-2,cross);
     l->setPen(m_pens["white"]);
-
-    updateViews();
 }
 
 void SnapshotModel::updateViews()
 {
-    QString tag = m_mode == TRAIN ? m_color : QString();
-    foreach(QString layer_name, m_layers.keys()) {
-        m_layers[layer_name]->setVisible( (layer_name == tag) );
+    layer("train")->setVisible(false);
+    layer("count")->setVisible(false);
+
+    switch (m_mode) {
+    case TRAIN:
+        layer("train")->setVisible(true);
+        foreach(QString color, s_colorNames) {
+            layer( QString("train.%1").arg(color))->setVisible( color == m_color );
+        }
+        break;
+    case COUNT:
+        layer("count")->setVisible(true);
+        break;
     }
-    /* something wrong with repaintage... */
+
+
+    // force repaint
     foreach(QGraphicsView * view,m_scene->views()) {
         view->viewport()->update();
     }
@@ -197,22 +209,23 @@ void SnapshotModel::loadData()
 QGraphicsItem * SnapshotModel::layer(const QString &name)
 {
     if (!m_layers.contains(name)) {
-        m_layers[name] = new QGraphicsItemGroup(0,m_scene);
+        int dotIdx = name.lastIndexOf(".");
+        QGraphicsItem * parent = 0;
+        if (dotIdx != -1) {
+            parent = layer( name.left(dotIdx) );
+        }
+        m_layers[name] = new QGraphicsItemGroup(parent, m_scene);
+        m_layers[name]->setData(ITEM_NAME, name.right(name.size() - dotIdx - 1) ); // this even works for no dot!
+        m_layers[name]->setZValue( name.count('.') + 1 );
     }
     return m_layers[name];
 }
 
-void SnapshotModel::clearLayer()
+void SnapshotModel::clearLayer(const QString& name)
 {
-    if (m_mode == TRAIN) {
-        QList<QGraphicsItem*> children = layer( m_color )->childItems();
-        foreach(QGraphicsItem* child, children) {
+    if (m_layers.contains(name))
+        foreach(QGraphicsItem* child, layer( name )->childItems())
             delete child;
-        }
-        m_colorPicks[m_color].clear();
-    } else if (m_mode == MASK) {
-        qDebug() << "TODO clear mask";
-    }
 
     updateViews();
 }
@@ -227,7 +240,7 @@ void SnapshotModel::selectByFlood(int x, int y)
     int pf = projectSettings().value("pick_fuzz").toInt();
     int res = cv::floodFill(input, mask,
                             cv::Point(x,y),
-                            cv::Scalar(0,0,0),
+                            0, // unused
                             &bounds,
                             // FIXME the range should be preference
                             cv::Scalar( pf,pf,pf ),
@@ -238,7 +251,7 @@ void SnapshotModel::selectByFlood(int x, int y)
 
     // if intersected some polygons - remove these polygons and grow ROI with their bounds
     QRect q_bounds = toQt(bounds);
-    QGraphicsItem * colorLayer = layer(m_color);
+    QGraphicsItem * colorLayer = layer( QString("train.%1.contours").arg(m_color) );
     foreach(QGraphicsItem * item, colorLayer->childItems()) {
         QGraphicsPolygonItem * poly_item = qgraphicsitem_cast<QGraphicsPolygonItem *>(item);
         if (!poly_item) continue;
@@ -273,7 +286,6 @@ void SnapshotModel::selectByFlood(int x, int y)
         QPolygon polygon = toQPolygon(approx);
         QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( polygon, colorLayer );
         poly_item->setPen(m_pens["thick-red"]);
-        poly_item->setZValue(5);
 
         poly_item = new QGraphicsPolygonItem( polygon, poly_item );
         poly_item->setPen(m_pens["white"]);
@@ -287,9 +299,11 @@ void SnapshotModel::unpick(int x, int y)
     QString color;
     QGraphicsPolygonItem * unpicked_poly = 0;
 
-    foreach(QString c, m_layers.keys()) {
-        QGraphicsItem * l = layer(c);
-        foreach(QGraphicsItem * item, l->childItems()) {
+    foreach(QString c, s_colorNames) {
+        QString contoursLayerPath = QString("train.%1.contours").arg(c);
+        if (! m_layers.contains(contoursLayerPath)) continue;
+        QGraphicsItem * contoursLayer = layer(contoursLayerPath);
+        foreach(QGraphicsItem * item, contoursLayer->childItems()) {
             QGraphicsPolygonItem * poly_item = qgraphicsitem_cast<QGraphicsPolygonItem *>(item);
             if (!poly_item) continue;
             if (poly_item->polygon().containsPoint(QPointF(x,y), Qt::OddEvenFill)) {
@@ -309,7 +323,8 @@ void SnapshotModel::unpick(int x, int y)
         if (unpicked_poly->polygon().containsPoint(pick, Qt::OddEvenFill))
             m_colorPicks[color].removeOne(pick);
     }
-    foreach(QGraphicsItem * item, layer(color)->childItems()) {
+    QString crossesLayerPath = QString("train.%1.crosses").arg(color);
+    foreach(QGraphicsItem * item, layer(crossesLayerPath)->childItems()) {
         QGraphicsLineItem * cross = qgraphicsitem_cast<QGraphicsLineItem *>(item);
         if (!cross) continue;
         if (unpicked_poly->polygon().containsPoint( cross->pos(), Qt::OddEvenFill )) {
@@ -317,7 +332,7 @@ void SnapshotModel::unpick(int x, int y)
         }
     }
 
-    // 3. draw this contour onto the mask
+    // 3. (un)draw this contour onto the mask
     cv::Mat mask = getMatrix(color+"_pickMask");
     std::vector< cv::Point > contour = toCvInt( unpicked_poly->polygon() );
     cv::Point * pts[] = { contour.data() };
@@ -334,23 +349,17 @@ void SnapshotModel::unpick(int x, int y)
 
 void SnapshotModel::trainColors()
 {
-    if (m_displayers.contains("samples-display")) {
-        delete m_displayers["samples-display"];
-    }
-    QGraphicsItemGroup * displayer = new QGraphicsItemGroup(0,m_scene);
-    m_displayers["samples-display"] = displayer;
-
     QVector<cv::Mat> centers_list;
     int centers_count = 0;
     cv::Mat input = getMatrix("lab");
 
     int color_index = 0;
 
-    foreach(QString color, m_layers.keys()) {
-        if (!m_matrices.contains(color+"_pickMask")) continue;
+    foreach(QString matrixTag, m_matrices.keys()) {
+        if (!matrixTag.endsWith("_pickMask")) continue;
 
         QVector<ColorType> sample_pixels;
-        cv::Mat mask = getMatrix(color+"_pickMask");
+        cv::Mat mask = getMatrix(matrixTag);
 
         for(int i = 0; i<input.rows; ++i)
             for(int j = 0; j<input.cols; ++j)
@@ -362,8 +371,6 @@ void SnapshotModel::trainColors()
                             << input.ptr<ColorType>(i)[j*3+2];
 
         if (sample_pixels.size()==0) continue;
-
-        qDebug() << "collected" << sample_pixels.size() / 3 << qPrintable(color) << "pixels";
 
         cv::Mat sample(sample_pixels.size()/3, 3, CV_32FC1, sample_pixels.data());
         // cv::flann::hierarchicalClustering returns float centers even for integer features
@@ -382,11 +389,13 @@ void SnapshotModel::trainColors()
     cv::Mat featuresLab = cv::Mat( centers_count, 3, CV_32FC1 );
     for(int i=0; i<centers_list.size(); ++i)
         centers_list[i].copyTo( featuresLab.rowRange( i*COLOR_GRADATIONS,(i+1)*COLOR_GRADATIONS ) );
+    m_matrices.remove("featuresRGB");
     setMatrix("featuresLab", featuresLab);
 
     cv::Mat featuresRGB = getMatrix("featuresRGB");
     QImage palette( featuresRGB.data, centers_count, 1, QImage::Format_RGB888 );
-    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(palette), displayer );
+    clearLayer("train.features");
+    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(palette), layer("train.features") );
     gpi->scale(15,15);
 
     cvflann::AutotunedIndexParams params( 0.8, 1, 0, 1.0 );
@@ -428,9 +437,7 @@ void SnapshotModel::countCards()
     cards_mask.convertTo( cards_mask, CV_8UC1, - 255.0 / thresh, 255.0 );
 
     // display results
-    if (m_displayers.contains("knn-display")) {
-        delete m_displayers["knn-display"];
-    }
+    clearLayer("count.knn-result");
 
     // poor man's LookUpTable
     cv::Mat vision = cv::Mat( indices.rows, indices.cols, CV_8UC3, cv::Scalar(0,0,0,0) );
@@ -444,10 +451,8 @@ void SnapshotModel::countCards()
         }
     }
 
-    QGraphicsItemGroup * displayer = new QGraphicsItemGroup(0,m_scene);
-    m_displayers["knn-display"] = displayer;
     QImage vision_image( (unsigned char *)vision.data, vision.cols, vision.rows, QImage::Format_RGB888 );
-    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(vision_image), displayer );
+    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(vision_image), layer("count.knn-result") );
 
     updateViews();
 }
@@ -528,5 +533,22 @@ void SnapshotModel::setMatrix(const QString &tag, const cv::Mat &matrix)
 void SnapshotModel::setImage(const QString &tag, const QImage &img)
 {
     m_images[tag] = img;
+}
+
+void SnapshotModel::clearCurrentTrainLayer()
+{
+    if (m_mode == TRAIN) {
+        clearLayer( QString("train.%1.crosses").arg(m_color) );
+        clearLayer( QString("train.%1.contours").arg(m_color) );
+        m_matrices.remove( m_color + "_pickMask" );
+    }
+    m_colorPicks[m_color].clear();
+    updateViews();
+}
+
+void SnapshotModel::setMode(SnapshotModel::Mode m)
+{
+    m_mode = m;
+    updateViews();
 }
 
