@@ -107,6 +107,9 @@ void VoteCounterShell::on_mode_currentChanged( int index )
         m_lastWorkMode = index;
     }
 
+    if (!m_snapshot)
+        return;
+
     switch (index) {
     case 0: { // train
         QButtonGroup * grp = findChild<QButtonGroup *>("trainModeGroup");
@@ -121,6 +124,14 @@ void VoteCounterShell::on_mode_currentChanged( int index )
     }
 }
 
+void VoteCounterShell::recallLastWorkMode()
+{
+    QTabWidget * mode = findChild<QTabWidget*>("mode");
+    Q_ASSERT(mode);
+    mode->setCurrentIndex(m_lastWorkMode);
+    on_mode_currentChanged( m_lastWorkMode );
+}
+
 void VoteCounterShell::on_trainModeGroup_buttonClicked( QAbstractButton * button )
 {
     if (!m_snapshot) return;
@@ -132,20 +143,6 @@ void VoteCounterShell::on_clearTrainLayer_clicked()
 {
     if (!m_snapshot) return;
     m_snapshot->clearLayer();
-}
-
-void VoteCounterShell::recallLastWorkMode()
-{
-    QTabWidget * mode = findChild<QTabWidget*>("mode");
-    Q_ASSERT(mode);
-    mode->setCurrentIndex(m_lastWorkMode);
-    if (m_lastWorkMode==0) {
-        QRadioButton * green = findChild<QRadioButton*>("greenTrainMode");
-        Q_ASSERT(green);
-        green->setChecked(true);
-        on_trainModeGroup_buttonClicked(green);
-    }
-
 }
 
 void VoteCounterShell::on_learn_clicked()
