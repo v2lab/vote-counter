@@ -302,8 +302,15 @@ void SnapshotModel::selectByFlood(int x, int y)
     foreach( const std::vector< cv::Point >& contour, contours ) {
         std::vector< cv::Point > approx;
         // simplify contours
-        cv::approxPolyDP( contour, approx, 3, true);
-        QPolygon polygon = toQPolygon(approx);
+        int simple = 1;
+        QPolygon polygon;
+        if (simple > 0) {
+            std::vector< cv::Point > approx;
+            // simplify contours
+            cv::approxPolyDP( contour, approx, simple, true);
+            polygon = toQPolygon(approx);
+        } else
+            polygon = toQPolygon(contour);
         QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( polygon, colorLayer );
         poly_item->setPen(m_pens["thick-red"]);
 
