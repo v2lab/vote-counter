@@ -20,6 +20,7 @@ public:
 
     enum ItemData {
         ITEM_NAME,
+        ITEM_FULLNAME
     };
 
     static const int COLOR_GRADATIONS = 5;

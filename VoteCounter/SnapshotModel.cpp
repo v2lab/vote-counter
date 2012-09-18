@@ -230,6 +230,7 @@ QGraphicsItem * SnapshotModel::layer(const QString &name)
         }
         m_layers[name] = new QGraphicsItemGroup(parent, m_scene);
         m_layers[name]->setData(ITEM_NAME, name.right(name.size() - dotIdx - 1) ); // this even works for no dot!
+        m_layers[name]->setData(ITEM_FULLNAME, name);
         m_layers[name]->setZValue( name.count('.') + 1 );
     }
     return m_layers[name];
@@ -238,8 +239,10 @@ QGraphicsItem * SnapshotModel::layer(const QString &name)
 void SnapshotModel::clearLayer(const QString& name)
 {
     if (m_layers.contains(name))
-        foreach(QGraphicsItem* child, layer( name )->childItems())
+        foreach(QGraphicsItem* child, layer( name )->childItems()) {
+            m_layers.remove( child->data(ITEM_FULLNAME).toString() );
             delete child;
+        }
 
     updateViews();
 }
