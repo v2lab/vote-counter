@@ -8,10 +8,11 @@
 #include <QRadioButton>
 #include <QButtonGroup>
 
-QStringList VoteCounterShell::s_persistentObjectNames = QStringList()
-        << "sizeLimit"
-        << "pickFuzz"
-        << "colorDiffThreshold";
+QStringList VoteCounterShell::s_persistentObjectNames =
+QStringList() << "sizeLimit"
+              << "pickFuzz"
+              << "colorDiffThreshold"
+              << "sizeFilter";
 
 VoteCounterShell::VoteCounterShell(QWidget *parent) :
     QMainWindow(parent), m_snapshot(0), m_lastWorkMode(0)

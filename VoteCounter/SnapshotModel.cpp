@@ -84,6 +84,11 @@ SnapshotModel::~SnapshotModel()
     saveData();
 }
 
+QVariant SnapshotModel::uiValue(const QString &name)
+{
+    return parent()->findChild<QObject*>(name)->property("value");
+}
+
 bool SnapshotModel::eventFilter(QObject * target, QEvent * event)
 {
     if (m_scene == qobject_cast<QGraphicsScene*>(target)) {
@@ -509,6 +514,9 @@ void SnapshotModel::computeColorDiff()
 
 void SnapshotModel::countCards()
 {
+    int minSize = uiValue("sizeFilter").toInt();
+    minSize *= minSize;
+
     for(int i = 0; i<3; i++) {
         QString layerName =  "count.cards." + s_colorNames[i];
 
@@ -518,7 +526,12 @@ void SnapshotModel::countCards()
         cv::findContours(mask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_TC89_L1);
         // now refresh contour visuals
         clearLayer(layerName);
+        int count = 0;
         foreach( const std::vector< cv::Point >& contour, contours ) {
+
+            if (minSize > cv::contourArea(contour) )
+                continue;
+
             int simple = 1;
             QPolygon polygon;
             if (simple > 0) {
@@ -530,9 +543,10 @@ void SnapshotModel::countCards()
                 polygon = toQPolygon(contour);
             QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( polygon, layer(layerName) );
             poly_item->setPen(m_pens["white"]);
+            count ++;
         }
 
-        parent()->findChild<QLabel*>( s_colorNames[i] + "Count" )->setText( QString("%1").arg( contours.size() ) );
+        parent()->findChild<QLabel*>( s_colorNames[i] + "Count" )->setText( QString("%1").arg( count ) );
     }
 }
 
@@ -687,11 +701,12 @@ void SnapshotModel::on_colorDiffThreshold_sliderPressed()
 void SnapshotModel::on_colorDiffThreshold_sliderReleased()
 {
     m_showColorDiff = false;
-    updateViews();
     countCards();
+    updateViews();
 }
 
-QVariant SnapshotModel::uiValue(const QString &name)
+void SnapshotModel::on_sizeFilter_valueChanged()
 {
-    return parent()->findChild<QObject*>(name)->property("value");
+    countCards();
+    updateViews();
 }

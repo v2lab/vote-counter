@@ -51,6 +51,7 @@ public slots:
     void on_colorDiffThreshold_valueChanged();
     void on_colorDiffThreshold_sliderPressed();
     void on_colorDiffThreshold_sliderReleased();
+    void on_sizeFilter_valueChanged();
 
 protected:
     static QStringSet s_cacheableImages;
