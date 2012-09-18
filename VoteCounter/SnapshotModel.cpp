@@ -477,8 +477,10 @@ void SnapshotModel::computeColorDiff()
         }
     }
 
-    for(int i=0; i<3; i++)
+    for(int i=0; i<3; i++) {
         cv::morphologyEx( cardMasks[i], cardMasks[i], cv::MORPH_OPEN, cv::Mat() );
+        setMatrix( "count.cards." + s_colorNames[i], cardMasks[i] );
+    }
 
     // the display
     cv::Mat colorDiff = cv::Mat( indices.rows, indices.cols, CV_8UC3, cv::Scalar(0,0,0,0) );
@@ -502,7 +504,31 @@ void SnapshotModel::computeColorDiff()
 
 void SnapshotModel::countCards()
 {
-    qWarning() << "TODO count cards";
+    for(int i = 0; i<3; i++) {
+        QString layerName =  "count.cards." + s_colorNames[i];
+
+        // clone mask because find contours corrupts
+        cv::Mat mask = getMatrix(layerName).clone();
+        std::vector< std::vector< cv::Point > > contours;
+        cv::findContours(mask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_TC89_L1);
+        // now refresh contour visuals
+        clearLayer(layerName);
+        foreach( const std::vector< cv::Point >& contour, contours ) {
+            int simple = 1;
+            QPolygon polygon;
+            if (simple > 0) {
+                std::vector< cv::Point > approx;
+                // simplify contours
+                cv::approxPolyDP( contour, approx, simple, true);
+                polygon = toQPolygon(approx);
+            } else
+                polygon = toQPolygon(contour);
+            QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( polygon, layer(layerName) );
+            poly_item->setPen(m_pens["white"]);
+        }
+
+        parent()->findChild<QLabel*>( s_colorNames[i] + "Count" )->setText( QString("%1").arg( contours.size() ) );
+    }
 }
 
 QImage SnapshotModel::getImage(const QString &tag)
