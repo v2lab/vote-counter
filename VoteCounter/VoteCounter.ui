@@ -252,6 +252,9 @@
              <property name="text">
               <string>color diff</string>
              </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
             </widget>
            </item>
            <item row="1" column="3" colspan="3">
@@ -261,6 +264,15 @@
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
+             </property>
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>255</number>
+             </property>
+             <property name="value">
+              <number>30</number>
              </property>
              <property name="orientation">
               <enum>Qt::Horizontal</enum>

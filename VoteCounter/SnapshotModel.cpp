@@ -81,6 +81,8 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
         showFeatures();
     }
 
+    updateViews();
+
     qDebug() << qPrintable(path) << "loaded";
 }
 
@@ -167,6 +169,7 @@ void SnapshotModel::updateViews()
         break;
     case COUNT:
         layer("count")->setVisible(true);
+        layer("count.colorDiff")->setVisible(  parent()->findChild<QCheckBox*>("colorDiffOn")->isChecked() );
         break;
     }
 
@@ -428,6 +431,16 @@ void SnapshotModel::on_count_clicked()
         qDebug() << "Teach me the colors first";
         return;
     }
+
+    classifyPixels();
+    computeColorDiff();
+    countCards();
+
+    updateViews();
+}
+
+void SnapshotModel::classifyPixels()
+{
     cv::Mat input = getMatrix("lab");
 
     int n_pixels = input.rows * input.cols;
@@ -443,34 +456,43 @@ void SnapshotModel::on_count_clicked()
     m_flann->knnSearch( input_1, indices_1, dists_1, 1, params);
     qDebug() << "K-Nearest Neighbout Search done";
 
-    m_matrices["indices"] = indices;
-    m_matrices["dists"] = dists;
+    setMatrix("indices", indices);
+    setMatrix("dists", dists);
+}
 
+void SnapshotModel::computeColorDiff()
+{
     cv::Mat cards_mask;
-    float thresh = 1000.0;
-    cv::threshold(dists, cards_mask, thresh, 0, cv::THRESH_TRUNC);
+    float thresh = parent()->findChild<QAbstractSlider*>("colorDiffThreshold")->value();
+    thresh = 3.0 * thresh * thresh;
+
+    cv::threshold(getMatrix("dists"), cards_mask, thresh, 0, cv::THRESH_TRUNC);
     cards_mask.convertTo( cards_mask, CV_8UC1, - 255.0 / thresh, 255.0 );
 
-    // display results
-    clearLayer("count.knn-result");
-
     // poor man's LookUpTable
-    cv::Mat vision = cv::Mat( indices.rows, indices.cols, CV_8UC3, cv::Scalar(0,0,0,0) );
+    cv::Mat indices = getMatrix("indices");
+    int n_pixels = indices.rows * indices.cols;
+    cv::Mat colorDiff = cv::Mat( indices.rows, indices.cols, CV_8UC3, cv::Scalar(0,0,0,0) );
     cv::Mat lut = getMatrix("featuresRGB");
     for(int i=0; i<n_pixels; i++) {
         if (cards_mask.data[i]) {
             int index = indices.ptr<int>(0)[i];
-            vision.data[i*3] = lut.data[ index*3 ];
-            vision.data[i*3+1] = lut.data[ index*3 + 1 ];
-            vision.data[i*3+2] = lut.data[ index*3 + 2 ];
+            colorDiff.data[i*3] = lut.data[ index*3 ];
+            colorDiff.data[i*3+1] = lut.data[ index*3 + 1 ];
+            colorDiff.data[i*3+2] = lut.data[ index*3 + 2 ];
         }
     }
+    setMatrix("colorDiff", colorDiff);
 
-    QImage vision_image( (unsigned char *)vision.data, vision.cols, vision.rows, QImage::Format_RGB888 );
-    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(vision_image), layer("count.knn-result") );
+    // display results
+    clearLayer("count.colorDiff");
+    QImage vision_image( (unsigned char *)colorDiff.data, colorDiff.cols, colorDiff.rows, QImage::Format_RGB888 );
+    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(vision_image), layer("count.colorDiff") );
+}
 
-    showFeatures();
-    updateViews();
+void SnapshotModel::countCards()
+{
+    qWarning() << "TODO count cards";
 }
 
 QImage SnapshotModel::getImage(const QString &tag)
@@ -597,3 +619,12 @@ void SnapshotModel::on_trainModeGroup_buttonClicked( QAbstractButton * button )
     setTrainMode( button->text().toLower() );
 }
 
+void SnapshotModel::on_colorDiffOn_stateChanged(int state)
+{
+    updateViews();
+}
+
+void SnapshotModel::on_colorDiffThreshold_valueChanged()
+{
+    computeColorDiff();
+}

@@ -43,6 +43,8 @@ public slots:
     void on_learn_clicked();
     void on_count_clicked();
     void on_trainModeGroup_buttonClicked( QAbstractButton * button );
+    void on_colorDiffOn_stateChanged(int state);
+    void on_colorDiffThreshold_valueChanged();
 
 protected:
     static bool s_staticInitialized;
@@ -74,6 +76,10 @@ protected:
     void selectByFlood(int x, int y);
     void showFeatures();
     void buildFlannRecognizer();
+
+    void classifyPixels();
+    void computeColorDiff();
+    void countCards();
 
     virtual bool eventFilter(QObject *, QEvent *);
 };
