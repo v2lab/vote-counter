@@ -14,7 +14,6 @@ public:
     enum Mode {
         INERT = 0,
         TRAIN,
-        MASK,
         COUNT
     };
 

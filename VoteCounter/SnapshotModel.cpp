@@ -127,12 +127,8 @@ void SnapshotModel::pick(int x, int y)
 
 void SnapshotModel::setTrainMode(const QString &tag)
 {
-    if (tag.toLower() == "mask") {
-        setMode(MASK);
-    } else {
-        setMode(TRAIN);
-        m_color = tag;
-    }
+    setMode(TRAIN);
+    m_color = tag;
 
     updateViews();
 }
