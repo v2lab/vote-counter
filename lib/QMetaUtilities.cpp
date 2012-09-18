@@ -43,7 +43,6 @@ void QMetaUtilities::connectSlotsByName(QObject * source, QObject * target)
             }
             if (sigIndex < 0)
                 continue;
-#warning Does this work?
             if (QMetaObject::connect(co, sigIndex, target, i)) {
                 foundIt = true;
                 break;
