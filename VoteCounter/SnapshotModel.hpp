@@ -45,6 +45,7 @@ public slots:
     void on_trainModeGroup_buttonClicked( QAbstractButton * button );
     void on_colorDiffOn_stateChanged(int state);
     void on_colorDiffThreshold_valueChanged();
+    void on_colorDiffThreshold_sliderReleased();
 
 protected:
     static bool s_staticInitialized;
@@ -80,6 +81,8 @@ protected:
     void classifyPixels();
     void computeColorDiff();
     void countCards();
+
+    QVariant uiValue(const QString& name);
 
     virtual bool eventFilter(QObject *, QEvent *);
 };

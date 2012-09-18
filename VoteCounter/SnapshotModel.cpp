@@ -1,5 +1,4 @@
 #include "SnapshotModel.hpp"
-#include "ProjectSettings.hpp"
 #include "QMetaUtilities.hpp"
 
 #include "QOpenCV.hpp"
@@ -260,7 +259,7 @@ void SnapshotModel::selectByFlood(int x, int y)
     cv::Mat mask = getMatrix(m_color+"_pickMask");
     cv::Rect bounds;
 
-    int pf = projectSettings().value("pick_fuzz").toInt();
+    int pf = uiValue("pickFuzz").toInt();
     int res = cv::floodFill(input, mask,
                             cv::Point(x,y),
                             0, // unused
@@ -499,7 +498,7 @@ QImage SnapshotModel::getImage(const QString &tag)
 {
     if (!m_images.contains(tag)) {
         QImage img;
-        int size_limit = projectSettings().value("size_limit", 640).toInt();
+        int size_limit = uiValue("sizeLimit").toInt();
 
         if (s_cacheableImages.contains(tag)) {
             // if cacheable - see if we can load it
@@ -627,4 +626,9 @@ void SnapshotModel::on_colorDiffOn_stateChanged(int state)
 void SnapshotModel::on_colorDiffThreshold_valueChanged()
 {
     computeColorDiff();
+}
+
+QVariant SnapshotModel::uiValue(const QString &name)
+{
+    return parent()->findChild<QObject*>(name)->property("value");
 }

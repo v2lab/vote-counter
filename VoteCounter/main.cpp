@@ -1,12 +1,5 @@
 #include <LoggingHub.hpp>
 #include "VoteCounterShell.hpp"
-#include "ProjectSettings.hpp"
-
-QSettings * g_projectSettings = 0;
-
-QSettings& projectSettings() {
-    return *g_projectSettings;
-}
 
 int
 main(int argc, char * argv[])
@@ -17,8 +10,6 @@ main(int argc, char * argv[])
     app.setOrganizationDomain("thepeoplespeak.com");
     app.setApplicationName("Vote Counter");
     app.setQuitOnLastWindowClosed(true);
-
-    g_projectSettings = new QSettings(&app);
 
     VoteCounterShell mainw;
 

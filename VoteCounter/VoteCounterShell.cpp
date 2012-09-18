@@ -1,5 +1,4 @@
 #include "VoteCounterShell.hpp"
-#include "ProjectSettings.hpp"
 #include "SnapshotModel.hpp"
 
 #include <QDir>
@@ -9,30 +8,63 @@
 #include <QRadioButton>
 #include <QButtonGroup>
 
+QStringList VoteCounterShell::s_persistentObjectNames = QStringList()
+        << "sizeLimit"
+        << "pickFuzz"
+        << "colorDiffThreshold";
+
 VoteCounterShell::VoteCounterShell(QWidget *parent) :
     QMainWindow(parent), m_snapshot(0), m_lastWorkMode(0)
 {
+
 }
 
 VoteCounterShell::~VoteCounterShell()
 {
+    saveSettings();
     if (m_snapshot)
         delete m_snapshot;
 }
 
 void VoteCounterShell::loadSettings()
 {
-    QSpinBox * spinner = findChild<QSpinBox*>("sizeLimit");
-    bool ok;
-    int value = projectSettings().value("size_limit").toInt(&ok);
-    if (ok) spinner->setValue( value );
+    foreach(QString name, s_persistentObjectNames) {
+        QObject * o = findChild<QObject*>(name);
+        if (!o) {
+            qWarning() << "No such widget to load value from settings:" << name;
+            continue;
+        }
 
-    spinner = findChild<QSpinBox*>("pickFuzz");
-    value = projectSettings().value("pick_fuzz").toInt(&ok);
-    if (ok) spinner->setValue( value );
+        if ((o->metaObject()->indexOfProperty("value") >= 0)
+                || (o->dynamicPropertyNames().contains("value"))) {
+            QVariant value = m_settings.value(name);
+            if (value.isValid())
+                o->setProperty("value", value);
+        }
+    }
 
-    loadDir( projectSettings().value("snaps_dir", QString()).toString() );
+    loadDir( m_settings.value("snaps_dir", QString()).toString() );
 }
+
+void VoteCounterShell::saveSettings()
+{
+    foreach(QString name, s_persistentObjectNames) {
+        QObject * o = findChild<QObject*>(name);
+        if (!o) {
+            qWarning() << "No such widget to save value to settins:" << name;
+            continue;
+        }
+
+        if ((o->metaObject()->indexOfProperty("value") >= 0)
+                || (o->dynamicPropertyNames().contains("value"))) {
+            m_settings.setValue(name, o->property("value"));
+        }
+    }
+
+    m_settings.sync();
+}
+
+
 
 void VoteCounterShell::on_snapDirPicker_clicked()
 {
@@ -42,8 +74,8 @@ void VoteCounterShell::on_snapDirPicker_clicked()
 
     loadDir( path );
     // and save it in settings
-    projectSettings().setValue( "snaps_dir", path);
-    projectSettings().sync();
+    m_settings.setValue( "snaps_dir", path);
+    m_settings.sync();
 }
 
 void VoteCounterShell::loadDir(const QString &path)
@@ -73,7 +105,7 @@ void VoteCounterShell::loadDir(const QString &path)
 void VoteCounterShell::on_snapsList_clicked( const QModelIndex & index )
 {
     QString snap = index.data( ).toString();
-    QString dir = projectSettings().value("snaps_dir").toString();
+    QString dir = m_settings.value("snaps_dir").toString();
     loadSnapshot( dir + "/" + snap);
 }
 
@@ -87,18 +119,6 @@ void VoteCounterShell::loadSnapshot(const QString &path)
     display->fitInView( m_snapshot->scene()->sceneRect(), Qt::KeepAspectRatio );
 
     recallLastWorkMode();
-}
-
-void VoteCounterShell::on_pickFuzz_valueChanged( int newValue )
-{
-    projectSettings().setValue("pick_fuzz", newValue);
-    projectSettings().sync();
-}
-
-void VoteCounterShell::on_sizeLimit_valueChanged( int newValue )
-{
-    projectSettings().setValue("size_limit", newValue);
-    projectSettings().sync();
 }
 
 void VoteCounterShell::on_mode_currentChanged( int index )

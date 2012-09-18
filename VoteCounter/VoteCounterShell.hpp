@@ -16,6 +16,7 @@ signals:
 
 public slots:
     void loadSettings();
+    void saveSettings();
     void loadDir(const QString& path);
     void loadSnapshot(const QString& path);
     void recallLastWorkMode();
@@ -23,13 +24,13 @@ public slots:
     // automatically connected slots for children's signals
     void on_snapDirPicker_clicked();
     void on_snapsList_clicked ( const QModelIndex & index );
-    void on_sizeLimit_valueChanged( int newValue );
     void on_mode_currentChanged( int index );
-    void on_pickFuzz_valueChanged( int newValue );
 
 protected:
     SnapshotModel * m_snapshot;
     int m_lastWorkMode;
+    QSettings m_settings;
+    static QStringList s_persistentObjectNames;
 };
 
 #endif // VOTECOUNTERSHELL_HPP
