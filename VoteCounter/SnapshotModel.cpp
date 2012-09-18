@@ -461,26 +461,45 @@ void SnapshotModel::classifyPixels()
 
 void SnapshotModel::computeColorDiff()
 {
-    cv::Mat cards_mask;
     float thresh = parent()->findChild<QAbstractSlider*>("colorDiffThreshold")->value();
     thresh = 3.0 * thresh * thresh;
 
-    cv::threshold(getMatrix("dists"), cards_mask, thresh, 0, cv::THRESH_TRUNC);
-    cards_mask.convertTo( cards_mask, CV_8UC1, - 255.0 / thresh, 255.0 );
+    cv::Mat thresholdedDiff;
+    cv::threshold(getMatrix("dists"), thresholdedDiff, thresh, 0, cv::THRESH_TRUNC);
+    thresholdedDiff.convertTo( thresholdedDiff, CV_8UC1, - 255.0 / thresh, 255.0 );
 
     // poor man's LookUpTable
     cv::Mat indices = getMatrix("indices");
     int n_pixels = indices.rows * indices.cols;
-    cv::Mat colorDiff = cv::Mat( indices.rows, indices.cols, CV_8UC3, cv::Scalar(0,0,0,0) );
     cv::Mat lut = getMatrix("featuresRGB");
+    // actual per-card-color masks
+    QVector<cv::Mat> cardMasks;
+    for(int i=0; i<3; i++)
+        cardMasks << cv::Mat(  indices.rows, indices.cols, CV_8UC1, cv::Scalar(0) );
+
     for(int i=0; i<n_pixels; i++) {
-        if (cards_mask.data[i]) {
+        if (thresholdedDiff.data[i]) {
             int index = indices.ptr<int>(0)[i];
+            int color = index / COLOR_GRADATIONS;
+            cardMasks[color].data[i] = 1;
+        }
+    }
+
+    for(int i=0; i<3; i++)
+        cv::morphologyEx( cardMasks[i], cardMasks[i], cv::MORPH_OPEN, cv::Mat() );
+
+    // the display
+    cv::Mat colorDiff = cv::Mat( indices.rows, indices.cols, CV_8UC3, cv::Scalar(0,0,0,0) );
+    for(int i=0; i<n_pixels; i++) {
+        int index = indices.ptr<int>(0)[i];
+        int color = index / COLOR_GRADATIONS;
+        if (cardMasks[color].data[i]) {
             colorDiff.data[i*3] = lut.data[ index*3 ];
             colorDiff.data[i*3+1] = lut.data[ index*3 + 1 ];
             colorDiff.data[i*3+2] = lut.data[ index*3 + 2 ];
         }
     }
+
     setMatrix("colorDiff", colorDiff);
 
     // display results
@@ -626,6 +645,11 @@ void SnapshotModel::on_colorDiffOn_stateChanged(int state)
 void SnapshotModel::on_colorDiffThreshold_valueChanged()
 {
     computeColorDiff();
+}
+
+void SnapshotModel::on_colorDiffThreshold_sliderReleased()
+{
+    countCards();
 }
 
 QVariant SnapshotModel::uiValue(const QString &name)
