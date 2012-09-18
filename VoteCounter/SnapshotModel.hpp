@@ -5,6 +5,8 @@
 #include <QGraphicsScene>
 #include <opencv2/flann/flann.hpp>
 
+typedef QSet< QString > QStringSet;
+
 class SnapshotModel : public QObject
 {
     Q_OBJECT
@@ -48,10 +50,9 @@ public slots:
     void on_colorDiffThreshold_sliderReleased();
 
 protected:
-    static bool s_staticInitialized;
-    static QSet< QString > s_cacheableImages;
-    static QSet< QString > s_resizedImages;
-    static QSet< QString > s_colorNames;
+    static QStringSet s_cacheableImages;
+    static QStringSet s_resizedImages;
+    static QStringList s_colorNames;
 
     QString m_originalPath;
     QDir m_parentDir, m_cacheDir;

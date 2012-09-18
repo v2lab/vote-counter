@@ -18,10 +18,9 @@ using namespace QtJson;
 #include <QEvent>
 #include <QGraphicsSceneMouseEvent>
 
-bool SnapshotModel::s_staticInitialized = false;
-QSet< QString > SnapshotModel::s_cacheableImages;
-QSet< QString > SnapshotModel::s_resizedImages;
-QSet< QString > SnapshotModel::s_colorNames;
+QStringSet SnapshotModel::s_cacheableImages = QStringSet() << "input";
+QStringSet SnapshotModel::s_resizedImages = QStringSet() << "input";
+QStringList SnapshotModel::s_colorNames = QStringList() << "green" << "pink" << "yellow";
 
 SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     QObject(parent),
@@ -31,13 +30,6 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     m_color("green"),
     m_flann(0)
 {
-    if (!s_staticInitialized) {
-        s_cacheableImages << "input";
-        s_resizedImages << "input";
-        s_colorNames << "green" << "pink" << "yellow";
-        s_staticInitialized = true;
-    }
-
     QMetaUtilities::connectSlotsByName( parent, this );
 
     m_pens["white"] = QPen(Qt::white);
