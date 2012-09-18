@@ -46,8 +46,10 @@ public slots:
     void on_learn_clicked();
     void on_count_clicked();
     void on_trainModeGroup_buttonClicked( QAbstractButton * button );
-    void on_colorDiffOn_stateChanged(int state);
+    void on_colorDiffOn_pressed();
+    void on_colorDiffOn_released();
     void on_colorDiffThreshold_valueChanged();
+    void on_colorDiffThreshold_sliderPressed();
     void on_colorDiffThreshold_sliderReleased();
 
 protected:
@@ -66,6 +68,7 @@ protected:
     QMap< QString, QList< QPoint > > m_colorPicks;
     QMap< QString, QPen > m_pens;
     QMap< QString, QGraphicsItem *> m_layers;
+    bool m_showColorDiff;
 
     typedef float ColorType;
     typedef cv::flann::L2<ColorType> ColorDistance;

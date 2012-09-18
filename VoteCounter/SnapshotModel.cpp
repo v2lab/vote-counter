@@ -28,7 +28,8 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     m_scene(new QGraphicsScene(this)),
     m_mode(INERT),
     m_color("green"),
-    m_flann(0)
+    m_flann(0),
+    m_showColorDiff(false)
 {
     QMetaUtilities::connectSlotsByName( parent, this );
 
@@ -160,7 +161,8 @@ void SnapshotModel::updateViews()
         break;
     case COUNT:
         layer("count")->setVisible(true);
-        layer("count.colorDiff")->setVisible(  parent()->findChild<QCheckBox*>("colorDiffOn")->isChecked() );
+        layer("count.colorDiff")->setVisible( m_showColorDiff );
+        layer("count.cards")->setVisible( !m_showColorDiff );
         break;
     }
 
@@ -658,8 +660,15 @@ void SnapshotModel::on_trainModeGroup_buttonClicked( QAbstractButton * button )
     setTrainMode( button->text().toLower() );
 }
 
-void SnapshotModel::on_colorDiffOn_stateChanged(int state)
+void SnapshotModel::on_colorDiffOn_pressed()
 {
+    m_showColorDiff = true;
+    updateViews();
+}
+
+void SnapshotModel::on_colorDiffOn_released()
+{
+    m_showColorDiff = false;
     updateViews();
 }
 
@@ -668,8 +677,17 @@ void SnapshotModel::on_colorDiffThreshold_valueChanged()
     computeColorDiff();
 }
 
+void SnapshotModel::on_colorDiffThreshold_sliderPressed()
+{
+    clearLayer("count.cards");
+    m_showColorDiff = true;
+    updateViews();
+}
+
 void SnapshotModel::on_colorDiffThreshold_sliderReleased()
 {
+    m_showColorDiff = false;
+    updateViews();
     countCards();
 }
 

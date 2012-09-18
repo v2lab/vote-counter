@@ -241,22 +241,6 @@
              </layout>
             </widget>
            </item>
-           <item row="1" column="1">
-            <widget class="QCheckBox" name="colorDiffOn">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string>color diff</string>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
            <item row="1" column="3" colspan="3">
             <widget class="QSlider" name="colorDiffThreshold">
              <property name="sizePolicy">
@@ -355,21 +339,27 @@
              </property>
             </spacer>
            </item>
-           <item row="1" column="2">
-            <spacer name="horizontalSpacer_7">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+           <item row="1" column="1">
+            <widget class="QPushButton" name="colorDiffOn">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
              </property>
-             <property name="sizeType">
-              <enum>QSizePolicy::Minimum</enum>
+             <property name="text">
+              <string>color diff</string>
              </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>10</width>
-               <height>20</height>
-              </size>
+             <property name="checkable">
+              <bool>false</bool>
              </property>
-            </spacer>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+             <property name="flat">
+              <bool>false</bool>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>
