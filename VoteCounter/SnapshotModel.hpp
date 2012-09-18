@@ -39,9 +39,10 @@ public slots:
     void pick(int x, int y);
     void unpick(int x, int y);
     void clearLayer(const QString& name);
-    void clearCurrentTrainLayer();
-    void trainColors();
-    void countCards();
+    void on_clearTrainLayer_clicked();
+    void on_learn_clicked();
+    void on_count_clicked();
+    void on_trainModeGroup_buttonClicked( QAbstractButton * button );
 
 protected:
     static bool s_staticInitialized;
@@ -72,7 +73,7 @@ protected:
     QGraphicsItem * layer(const QString& name);
     void selectByFlood(int x, int y);
     void showFeatures();
-    void learnFeatures();
+    void buildFlannRecognizer();
 
     virtual bool eventFilter(QObject *, QEvent *);
 };

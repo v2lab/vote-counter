@@ -62,7 +62,7 @@
           </sizepolicy>
          </property>
          <property name="currentIndex">
-          <number>0</number>
+          <number>1</number>
          </property>
          <widget class="QWidget" name="trainTab">
           <attribute name="title">
@@ -88,16 +88,6 @@
              </attribute>
             </widget>
            </item>
-           <item row="1" column="2">
-            <widget class="QRadioButton" name="yellowTrainMode">
-             <property name="text">
-              <string>yellow</string>
-             </property>
-             <attribute name="buttonGroup">
-              <string>trainModeGroup</string>
-             </attribute>
-            </widget>
-           </item>
            <item row="1" column="0">
             <spacer name="horizontalSpacer_3">
              <property name="orientation">
@@ -111,7 +101,7 @@
              </property>
             </spacer>
            </item>
-           <item row="1" column="5">
+           <item row="1" column="6">
             <spacer name="horizontalSpacer_4">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
@@ -124,31 +114,21 @@
              </property>
             </spacer>
            </item>
-           <item row="1" column="3">
-            <widget class="QRadioButton" name="pinkTrainMode">
-             <property name="text">
-              <string>pink</string>
-             </property>
-             <attribute name="buttonGroup">
-              <string>trainModeGroup</string>
-             </attribute>
-            </widget>
-           </item>
-           <item row="2" column="4">
+           <item row="2" column="5">
             <widget class="QPushButton" name="learn">
              <property name="text">
               <string>learn colors</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="4">
+           <item row="1" column="5">
             <widget class="QPushButton" name="clearTrainLayer">
              <property name="text">
               <string>reset color</string>
              </property>
             </widget>
            </item>
-           <item row="2" column="3">
+           <item row="2" column="4">
             <widget class="QRadioButton" name="maskDrawMode">
              <property name="text">
               <string>mask</string>
@@ -168,7 +148,7 @@
              </property>
             </widget>
            </item>
-           <item row="2" column="2">
+           <item row="2" column="3">
             <widget class="QSpinBox" name="pickFuzz">
              <property name="alignment">
               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -190,6 +170,26 @@
              </property>
             </widget>
            </item>
+           <item row="1" column="4">
+            <widget class="QRadioButton" name="yellowTrainMode">
+             <property name="text">
+              <string>yellow</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string>trainModeGroup</string>
+             </attribute>
+            </widget>
+           </item>
+           <item row="1" column="3">
+            <widget class="QRadioButton" name="pinkTrainMode">
+             <property name="text">
+              <string>pink</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string>trainModeGroup</string>
+             </attribute>
+            </widget>
+           </item>
           </layout>
          </widget>
          <widget class="QWidget" name="countTab">
@@ -203,33 +203,7 @@
            <property name="spacing">
             <number>2</number>
            </property>
-           <item row="0" column="0">
-            <spacer name="horizontalSpacer_9">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item row="0" column="7">
-            <spacer name="horizontalSpacer_10">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item row="0" column="2">
+           <item row="0" column="1" colspan="2">
             <widget class="QPushButton" name="count">
              <property name="text">
               <string>count</string>
@@ -267,7 +241,36 @@
              </layout>
             </widget>
            </item>
-           <item row="0" column="5">
+           <item row="1" column="1">
+            <widget class="QCheckBox" name="colorDiffOn">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>color diff</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="3" colspan="3">
+            <widget class="QSlider" name="colorDiffThreshold">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="tickPosition">
+              <enum>QSlider::TicksBelow</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="4">
             <widget class="QGroupBox" name="groupBox_2">
              <property name="title">
               <string>pink</string>
@@ -289,7 +292,7 @@
              </layout>
             </widget>
            </item>
-           <item row="0" column="6">
+           <item row="0" column="5">
             <widget class="QGroupBox" name="groupBox_3">
              <property name="title">
               <string>yellow</string>
@@ -310,6 +313,48 @@
               </item>
              </layout>
             </widget>
+           </item>
+           <item row="1" column="6">
+            <spacer name="horizontalSpacer_5">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="1" column="0">
+            <spacer name="horizontalSpacer_6">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="1" column="2">
+            <spacer name="horizontalSpacer_7">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Minimum</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>10</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </widget>

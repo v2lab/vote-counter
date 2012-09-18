@@ -1,5 +1,6 @@
 #include "SnapshotModel.hpp"
 #include "ProjectSettings.hpp"
+#include "QMetaUtilities.hpp"
 
 #include "QOpenCV.hpp"
 using namespace QOpenCV;
@@ -37,6 +38,8 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
         s_colorNames << "green" << "pink" << "yellow";
         s_staticInitialized = true;
     }
+
+    QMetaUtilities::connectSlotsByName( parent, this );
 
     m_pens["white"] = QPen(Qt::white);
     m_pens["thick-red"] = QPen(Qt::red, 2);
@@ -364,7 +367,7 @@ void SnapshotModel::unpick(int x, int y)
     updateViews();
 }
 
-void SnapshotModel::trainColors()
+void SnapshotModel::on_learn_clicked()
 {
     QVector<cv::Mat> centers_list;
     int centers_count = 0;
@@ -411,7 +414,7 @@ void SnapshotModel::trainColors()
 
     showFeatures();
 
-    learnFeatures();
+    buildFlannRecognizer();
 
     qDebug() << "built FLANN classifier";
 
@@ -419,7 +422,7 @@ void SnapshotModel::trainColors()
 
 }
 
-void SnapshotModel::countCards()
+void SnapshotModel::on_count_clicked()
 {
     if (!m_flann) {
         qDebug() << "Teach me the colors first";
@@ -548,7 +551,7 @@ void SnapshotModel::setImage(const QString &tag, const QImage &img)
     m_images[tag] = img;
 }
 
-void SnapshotModel::clearCurrentTrainLayer()
+void SnapshotModel::on_clearTrainLayer_clicked()
 {
     if (m_mode == TRAIN) {
         clearLayer( QString("train.%1.crosses").arg(m_color) );
@@ -574,7 +577,7 @@ void SnapshotModel::showFeatures()
     gpi->scale(15,15);
 }
 
-void SnapshotModel::learnFeatures()
+void SnapshotModel::buildFlannRecognizer()
 {
     cvflann::AutotunedIndexParams params( 0.8, 1, 0, 1.0 );
     //cvflann::LinearIndexParams params;
@@ -587,5 +590,10 @@ void SnapshotModel::learnFeatures()
     QString flann_file = m_parentDir.filePath("flann.dat");
     m_flann->save( flann_file.toStdString() );
 
+}
+
+void SnapshotModel::on_trainModeGroup_buttonClicked( QAbstractButton * button )
+{
+    setTrainMode( button->text().toLower() );
 }
 

@@ -81,6 +81,7 @@ void VoteCounterShell::loadSnapshot(const QString &path)
 {
     if (m_snapshot) delete m_snapshot;
     m_snapshot = new SnapshotModel(path, this);
+
     QGraphicsView * display = findChild<QGraphicsView*>("display");
     display->setScene( m_snapshot->scene() );
     display->fitInView( m_snapshot->scene()->sceneRect(), Qt::KeepAspectRatio );
@@ -113,7 +114,7 @@ void VoteCounterShell::on_mode_currentChanged( int index )
     switch (index) {
     case 0: { // train
         QButtonGroup * grp = findChild<QButtonGroup *>("trainModeGroup");
-        on_trainModeGroup_buttonClicked(grp->checkedButton());
+        m_snapshot->on_trainModeGroup_buttonClicked(grp->checkedButton());
         break;
     }
     case 1: // count
@@ -132,27 +133,4 @@ void VoteCounterShell::recallLastWorkMode()
     on_mode_currentChanged( m_lastWorkMode );
 }
 
-void VoteCounterShell::on_trainModeGroup_buttonClicked( QAbstractButton * button )
-{
-    if (!m_snapshot) return;
-    QString trainMode = button->text().toLower();
-    m_snapshot->setTrainMode( trainMode );
-}
 
-void VoteCounterShell::on_clearTrainLayer_clicked()
-{
-    if (!m_snapshot) return;
-    m_snapshot->clearCurrentTrainLayer();
-}
-
-void VoteCounterShell::on_learn_clicked()
-{
-    if (!m_snapshot) return;
-    m_snapshot->trainColors();
-}
-
-void VoteCounterShell::on_count_clicked()
-{
-    if (!m_snapshot) return;
-    m_snapshot->countCards();
-}
