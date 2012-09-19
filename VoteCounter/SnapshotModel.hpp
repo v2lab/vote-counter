@@ -74,7 +74,6 @@ protected:
     typedef cv::flann::L2<ColorType> ColorDistance;
     cv::flann::GenericIndex< ColorDistance > * m_flann;
 
-    void addCross(int x, int y);
     void updateViews();
     void saveData();
     void loadData();

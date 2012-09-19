@@ -34,7 +34,6 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     QMetaUtilities::connectSlotsByName( parent, this );
 
     m_pens["white"] = QPen(Qt::white);
-    m_pens["thick-red"] = QPen(Qt::red, 2);
     m_scene->setObjectName("scene"); // so we can autoconnect signals
 
     qDebug() << "Loading" << qPrintable(path);
@@ -118,7 +117,6 @@ void SnapshotModel::pick(int x, int y)
     if (m_mode == TRAIN) {
         if (input.rect().contains(x,y)) {
             m_colorPicks[m_color].append( QPoint(x,y) ); // this is for saving / restoring
-            addCross(x,y);
             selectByFlood(x,y);
             updateViews();
         }
@@ -131,21 +129,6 @@ void SnapshotModel::setTrainMode(const QString &tag)
     m_color = tag;
 
     updateViews();
-}
-
-void SnapshotModel::addCross(int x, int y)
-{
-    QGraphicsLineItem * cross = new QGraphicsLineItem(-3,-3,+3,+3, layer( QString("train.%1.crosses").arg(m_color)));
-    cross->setPen(m_pens["thick-red"]);
-    cross->setPos(x, y);
-
-    QGraphicsLineItem * l = new QGraphicsLineItem(+3,-3,-3,+3,cross);
-    l->setPen(m_pens["thick-red"]);
-
-    l = new QGraphicsLineItem(+2,-2,-2,+2,cross);
-    l->setPen(m_pens["white"]);
-    l = new QGraphicsLineItem(+2,+2,-2,-2,cross);
-    l->setPen(m_pens["white"]);
 }
 
 void SnapshotModel::updateViews()
@@ -312,9 +295,6 @@ void SnapshotModel::selectByFlood(int x, int y)
         } else
             polygon = toQPolygon(contour);
         QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( polygon, colorLayer );
-        poly_item->setPen(m_pens["thick-red"]);
-
-        poly_item = new QGraphicsPolygonItem( polygon, poly_item );
         poly_item->setPen(m_pens["white"]);
     }
 
@@ -345,18 +325,10 @@ void SnapshotModel::unpick(int x, int y)
     if (!unpicked_poly)
         return;
 
-    // 2. find which picks are in this contour and remove them and their crosses
+    // 2. find which picks are in this contour and remove them
     foreach(const QPoint& pick, m_colorPicks[color]) {
         if (unpicked_poly->polygon().containsPoint(pick, Qt::OddEvenFill))
             m_colorPicks[color].removeOne(pick);
-    }
-    QString crossesLayerPath = QString("train.%1.crosses").arg(color);
-    foreach(QGraphicsItem * item, layer(crossesLayerPath)->childItems()) {
-        QGraphicsLineItem * cross = qgraphicsitem_cast<QGraphicsLineItem *>(item);
-        if (!cross) continue;
-        if (unpicked_poly->polygon().containsPoint( cross->pos(), Qt::OddEvenFill )) {
-            delete cross;
-        }
     }
 
     // 3. (un)draw this contour onto the mask
@@ -634,7 +606,6 @@ void SnapshotModel::setImage(const QString &tag, const QImage &img)
 void SnapshotModel::on_clearTrainLayer_clicked()
 {
     if (m_mode == TRAIN) {
-        clearLayer( QString("train.%1.crosses").arg(m_color) );
         clearLayer( QString("train.%1.contours").arg(m_color) );
         m_matrices.remove( m_color + "_pickMask" );
     }
