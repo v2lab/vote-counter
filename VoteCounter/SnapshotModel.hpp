@@ -1,9 +1,11 @@
 #ifndef SNAPSHOTMODEL_HPP
 #define SNAPSHOTMODEL_HPP
 
-#include <QObject>
-#include <QGraphicsScene>
+#include <QtCore>
+#include <QtGui>
 #include <opencv2/flann/flann.hpp>
+
+class MouseLogic;
 
 typedef QSet< QString > QStringSet;
 
@@ -51,6 +53,10 @@ public slots:
     void on_colorDiffThreshold_sliderPressed();
     void on_colorDiffThreshold_sliderReleased();
     void on_sizeFilter_valueChanged();
+    void on_mouseLogic_pointClicked(QPointF point, Qt::MouseButton button, Qt::KeyboardModifiers mods);
+    void on_mouseLogic_rectUpdated(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods);
+    void on_mouseLogic_rectSelected(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods);
+
 
 protected:
     static QStringSet s_cacheableImages;
@@ -63,6 +69,7 @@ protected:
     QMap< QString, cv::Mat > m_matrices;
 
     QGraphicsScene * m_scene;
+    MouseLogic * m_mouseLogic;
     Mode m_mode;
     QString m_color;
     QMap< QString, QList< QPoint > > m_colorPicks;
@@ -87,8 +94,6 @@ protected:
     void countCards();
 
     QVariant uiValue(const QString& name);
-
-    virtual bool eventFilter(QObject *, QEvent *);
 };
 
 #endif // SNAPSHOTMODEL_HPP

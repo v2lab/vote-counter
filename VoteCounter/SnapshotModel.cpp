@@ -1,5 +1,6 @@
 #include "SnapshotModel.hpp"
 #include "QMetaUtilities.hpp"
+#include "MouseLogic.hpp"
 
 #include "QOpenCV.hpp"
 using namespace QOpenCV;
@@ -26,15 +27,16 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     QObject(parent),
     m_originalPath(path),
     m_scene(new QGraphicsScene(this)),
+    m_mouseLogic( new MouseLogic(m_scene) ),
     m_mode(INERT),
     m_color("green"),
     m_flann(0),
     m_showColorDiff(false)
 {
-    QMetaUtilities::connectSlotsByName( parent, this );
 
     m_pens["white"] = QPen(Qt::white);
-    m_scene->setObjectName("scene"); // so we can autoconnect signals
+    m_mouseLogic->setObjectName("mouseLogic");
+    QMetaUtilities::connectSlotsByName( parent, this );
 
     qDebug() << "Loading" << qPrintable(path);
 
@@ -50,7 +52,6 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
 
     // add the image to the scene
     m_scene->addPixmap( QPixmap::fromImage( getImage("input") ) );
-    m_scene->installEventFilter(this);
 
     loadData();
 
@@ -86,28 +87,6 @@ SnapshotModel::~SnapshotModel()
 QVariant SnapshotModel::uiValue(const QString &name)
 {
     return parent()->findChild<QObject*>(name)->property("value");
-}
-
-bool SnapshotModel::eventFilter(QObject * target, QEvent * event)
-{
-    if (m_scene == qobject_cast<QGraphicsScene*>(target)) {
-        switch( event->type() ) {
-        case QEvent::GraphicsSceneMousePress: {
-            QGraphicsSceneMouseEvent * mevent = dynamic_cast<QGraphicsSceneMouseEvent *>(event);
-            // mevent->scenePos() is pixel coordinates of the pick
-            if (mevent->button() == Qt::LeftButton) {
-                pick( mevent->scenePos().x(), mevent->scenePos().y() );
-            } else {
-                unpick(mevent->scenePos().x(), mevent->scenePos().y());
-            }
-            break;
-        }
-        default:
-            break;
-        }
-    }
-
-    return true;
 }
 
 void SnapshotModel::pick(int x, int y)
@@ -684,3 +663,23 @@ void SnapshotModel::on_sizeFilter_valueChanged()
     countCards();
     updateViews();
 }
+
+void SnapshotModel::on_mouseLogic_pointClicked(QPointF point, Qt::MouseButton button, Qt::KeyboardModifiers mods)
+{
+    if (button == Qt::LeftButton) {
+        pick( point.x(), point.y() );
+    } else {
+        unpick(point.x(), point.y());
+    }
+}
+
+void SnapshotModel::on_mouseLogic_rectUpdated(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods)
+{
+
+}
+
+void SnapshotModel::on_mouseLogic_rectSelected(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods)
+{
+
+}
+
