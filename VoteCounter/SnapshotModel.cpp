@@ -22,6 +22,8 @@ using namespace QtJson;
 QStringSet SnapshotModel::s_cacheableImages = QStringSet() << "input";
 QStringSet SnapshotModel::s_resizedImages = QStringSet() << "input";
 QStringList SnapshotModel::s_colorNames = QStringList() << "green" << "pink" << "yellow";
+QStringList SnapshotModel::s_persistentMasks = QStringList()
+<< "train.contours.green" << "train.contours.pink" << "train.contours.yellow";
 
 SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     QObject(parent),
@@ -62,21 +64,21 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     loadData();
 
     // try to load flann
-    QString features_file = m_parentDir.filePath("features.png");
+    QString palette_file = m_parentDir.filePath("palette.png");
     QString flann_file = m_parentDir.filePath("flann.dat");
-    if ( QFileInfo(features_file).exists() && QFileInfo(flann_file).exists()) {
-        cv::Mat featuresRGB = cv::imread( features_file.toStdString(), -1 );
-        cv::Mat featuresLab;
-        featuresRGB.convertTo(featuresLab, CV_32FC3, 1.0/255.0);
-        cv::cvtColor( featuresLab, featuresLab, CV_RGB2Lab );
+    if ( QFileInfo(palette_file).exists() && QFileInfo(flann_file).exists()) {
+        cv::Mat paletteRGB = cv::imread( palette_file.toStdString(), -1 );
+        cv::Mat paletteLab;
+        paletteRGB.convertTo(paletteLab, CV_32FC3, 1.0/255.0);
+        cv::cvtColor( paletteLab, paletteLab, CV_RGB2Lab );
 
-        setMatrix("featuresRGB", cv::Mat(featuresRGB.rows, 3, CV_8UC1, featuresRGB.data).clone());
-        setMatrix("featuresLab", cv::Mat(featuresLab.rows, 3, CV_32FC1, featuresLab.data).clone());
+        setMatrix("paletteRGB", cv::Mat(paletteRGB.rows, 3, CV_8UC1, paletteRGB.data).clone());
+        setMatrix("paletteLab", cv::Mat(paletteLab.rows, 3, CV_32FC1, paletteLab.data).clone());
 
         cvflann::SavedIndexParams params(flann_file.toStdString());
-        m_flann = new cv::flann::GenericIndex< ColorDistance >(getMatrix("featuresLab"), params);
+        m_flann = new cv::flann::GenericIndex< ColorDistance >(getMatrix("paletteLab"), params);
 
-        showFeatures();
+        showPalette();
     }
 
     updateViews();
@@ -124,13 +126,13 @@ void SnapshotModel::updateViews()
     case TRAIN:
         layer("train")->setVisible(true);
         foreach(QString color, s_colorNames) {
-            layer( QString("train.%1").arg(color))->setVisible( color == m_color );
+            layer( "train.contours." + color)->setVisible( color == m_color );
         }
         break;
     case COUNT:
         layer("count")->setVisible(true);
         layer("count.colorDiff")->setVisible( m_showColorDiff );
-        layer("count.cards")->setVisible( !m_showColorDiff );
+        layer("count.contours")->setVisible( !m_showColorDiff );
         break;
     }
 
@@ -143,10 +145,34 @@ void SnapshotModel::updateViews()
 
 void SnapshotModel::saveData()
 {
+    foreach(QString name, s_persistentMasks) {
+        QString fname = m_cacheDir.filePath(name + ".png");
+        if (m_matrices.contains(name)) {
+            cv::imwrite( fname.toStdString(), getMatrix(name) );
+        } else if (QFile( fname ).exists()) {
+            QFile( fname ).remove();
+        }
+    }
 }
 
 void SnapshotModel::loadData()
 {
+    cv::Mat input = getMatrix("input");
+    int mrows = input.rows + 1, mcols = input.cols + 1;
+
+    foreach(QString name, s_persistentMasks) {
+        QString fname = m_cacheDir.filePath(name + ".png");
+        if ( QFile(fname).exists() ) {
+            cv::Mat mask = cv::imread( fname.toStdString(), 0);
+            if (mask.rows == mrows && mask.cols == mcols) {
+                setMatrix(name, mask);
+                detectContours(name);
+            } else {
+                qDebug() << "Incompatible mask" << fname << ", removing";
+                QFile(fname).remove();
+            }
+        }
+    }
 }
 
 QGraphicsItem * SnapshotModel::layer(const QString &name)
@@ -180,7 +206,7 @@ void SnapshotModel::selectByFlood(int x, int y)
 {
     // flood fill inside roi
     cv::Mat input = getMatrix("lab");
-    cv::Mat mask = getMatrix(m_color+"_pickMask");
+    cv::Mat mask = getMatrix( "train.contours." + m_color);
     cv::Rect bounds;
 
     int pf = uiValue("pickFuzz").toInt();
@@ -197,7 +223,7 @@ void SnapshotModel::selectByFlood(int x, int y)
 
     // if intersected some polygons - remove these polygons and grow ROI with their bounds
     QRect q_bounds = toQt(bounds);
-    QGraphicsItem * colorLayer = layer( QString("train.%1.contours").arg(m_color) );
+    QGraphicsItem * colorLayer = layer( "train.contours." + m_color );
     foreach(QGraphicsItem * item, colorLayer->childItems()) {
         QGraphicsPolygonItem * poly_item = qgraphicsitem_cast<QGraphicsPolygonItem *>(item);
         if (!poly_item) continue;
@@ -250,7 +276,7 @@ void SnapshotModel::unpick(int x, int y)
     QGraphicsPolygonItem * unpicked_poly = 0;
 
     foreach(QString c, s_colorNames) {
-        QString contoursLayerPath = QString("train.%1.contours").arg(c);
+        QString contoursLayerPath = "train.contours." + c;
         if (! m_layers.contains(contoursLayerPath)) continue;
         QGraphicsItem * contoursLayer = layer(contoursLayerPath);
         foreach(QGraphicsItem * item, contoursLayer->childItems()) {
@@ -269,7 +295,7 @@ void SnapshotModel::unpick(int x, int y)
         return;
 
     // 3. (un)draw this contour onto the mask
-    cv::Mat mask = getMatrix(color+"_pickMask");
+    cv::Mat mask = getMatrix("train.contours." + color);
     std::vector< cv::Point > contour = toCvInt( unpicked_poly->polygon() );
     cv::Point * pts[] = { contour.data() };
     int npts[] = { contour.size() };
@@ -292,7 +318,7 @@ void SnapshotModel::on_learn_clicked()
     int color_index = 0;
 
     foreach(QString matrixTag, m_matrices.keys()) {
-        if (!matrixTag.endsWith("_pickMask")) continue;
+        if (!matrixTag.startsWith("train.contours.")) continue;
 
         QVector<ColorType> sample_pixels;
         cv::Mat mask = getMatrix(matrixTag);
@@ -309,7 +335,7 @@ void SnapshotModel::on_learn_clicked()
         if (sample_pixels.size()==0) continue;
 
         cv::Mat sample(sample_pixels.size()/3, 3, CV_32FC1, sample_pixels.data());
-        // cv::flann::hierarchicalClustering returns float centers even for integer features
+        // cv::flann::hierarchicalClustering returns float centers even for integer palette
         cv::Mat centers(COLOR_GRADATIONS, 3, CV_32FC1);
         cvflann::KMeansIndexParams params(
                     COLOR_GRADATIONS, // branching
@@ -322,13 +348,13 @@ void SnapshotModel::on_learn_clicked()
         color_index++;
     }
 
-    cv::Mat featuresLab = cv::Mat( centers_count, 3, CV_32FC1 );
+    cv::Mat paletteLab = cv::Mat( centers_count, 3, CV_32FC1 );
     for(int i=0; i<centers_list.size(); ++i)
-        centers_list[i].copyTo( featuresLab.rowRange( i*COLOR_GRADATIONS,(i+1)*COLOR_GRADATIONS ) );
-    m_matrices.remove("featuresRGB");
-    setMatrix("featuresLab", featuresLab);
+        centers_list[i].copyTo( paletteLab.rowRange( i*COLOR_GRADATIONS,(i+1)*COLOR_GRADATIONS ) );
+    m_matrices.remove("paletteRGB");
+    setMatrix("paletteLab", paletteLab);
 
-    showFeatures();
+    showPalette();
 
     buildFlannRecognizer();
 
@@ -385,7 +411,7 @@ void SnapshotModel::computeColorDiff()
     // poor man's LookUpTable
     cv::Mat indices = getMatrix("indices");
     int n_pixels = indices.rows * indices.cols;
-    cv::Mat lut = getMatrix("featuresRGB");
+    cv::Mat lut = getMatrix("paletteRGB");
     // actual per-card-color masks
     QVector<cv::Mat> cardMasks;
     for(int i=0; i<3; i++)
@@ -401,7 +427,7 @@ void SnapshotModel::computeColorDiff()
 
     for(int i=0; i<3; i++) {
         cv::morphologyEx( cardMasks[i], cardMasks[i], cv::MORPH_OPEN, cv::Mat() );
-        setMatrix( "count.cards." + s_colorNames[i], cardMasks[i] );
+        setMatrix( "count.contours." + s_colorNames[i], cardMasks[i] );
     }
 
     // the display
@@ -430,7 +456,7 @@ void SnapshotModel::countCards()
     minSize *= minSize;
 
     for(int i = 0; i<3; i++) {
-        QString layerName =  "count.cards." + s_colorNames[i];
+        QString layerName =  "count.contours." + s_colorNames[i];
 
         // clone mask because find contours corrupts
         cv::Mat mask = getMatrix(layerName).clone();
@@ -508,13 +534,13 @@ cv::Mat SnapshotModel::getMatrix(const QString &tag)
             cv::Mat input = getMatrix("input");
             input.convertTo(matrix, CV_32FC3, 1.0/255.0);
             cv::cvtColor( matrix, matrix, CV_RGB2Lab );
-        } else if (tag.endsWith("_pickMask")) {
+        } else if (tag.startsWith("train.contours.")) {
             matrix = cv::Mat(inputSize.height+2, inputSize.width+2, CV_8UC1, cv::Scalar(0));
-        } else if (tag == "featuresRGB") {
-            cv::Mat featuresLab = getMatrix("featuresLab");
-            matrix = cv::Mat( featuresLab.rows, 3, CV_32FC1 );
-            cv::cvtColor( cv::Mat(featuresLab.rows, 1, CV_32FC3, featuresLab.data),
-                          cv::Mat(featuresLab.rows, 1, CV_32FC3, matrix.data),
+        } else if (tag == "paletteRGB") {
+            cv::Mat paletteLab = getMatrix("paletteLab");
+            matrix = cv::Mat( paletteLab.rows, 3, CV_32FC1 );
+            cv::cvtColor( cv::Mat(paletteLab.rows, 1, CV_32FC3, paletteLab.data),
+                          cv::Mat(paletteLab.rows, 1, CV_32FC3, matrix.data),
                           CV_Lab2RGB );
             matrix.convertTo( matrix, CV_8UC1, 255.0 );
         } else if (tag == "input") {
@@ -540,11 +566,12 @@ void SnapshotModel::setImage(const QString &tag, const QImage &img)
     m_images[tag] = img;
 }
 
-void SnapshotModel::on_clearTrainLayer_clicked()
+void SnapshotModel::on_resetLayer_clicked()
 {
     if (m_mode == TRAIN) {
-        clearLayer( QString("train.%1.contours").arg(m_color) );
-        m_matrices.remove( m_color + "_pickMask" );
+        QString name = "train.contours." + m_color;
+        clearLayer( name );
+        m_matrices.remove( name );
     }
     updateViews();
 }
@@ -555,12 +582,12 @@ void SnapshotModel::setMode(SnapshotModel::Mode m)
     updateViews();
 }
 
-void SnapshotModel::showFeatures()
+void SnapshotModel::showPalette()
 {
-    cv::Mat featuresRGB = getMatrix("featuresRGB");
-    QImage palette( featuresRGB.data, featuresRGB.rows, 1, QImage::Format_RGB888 );
-    clearLayer("train.features");
-    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(palette), layer("train.features") );
+    cv::Mat paletteRGB = getMatrix("paletteRGB");
+    QImage palette( paletteRGB.data, paletteRGB.rows, 1, QImage::Format_RGB888 );
+    clearLayer("train.palette");
+    QGraphicsPixmapItem * gpi = new QGraphicsPixmapItem( QPixmap::fromImage(palette), layer("train.palette") );
     gpi->scale(15,15);
 }
 
@@ -569,10 +596,10 @@ void SnapshotModel::buildFlannRecognizer()
     cvflann::AutotunedIndexParams params( 0.8, 1, 0, 1.0 );
     //cvflann::LinearIndexParams params;
     if (m_flann) delete m_flann;
-    m_flann = new cv::flann::GenericIndex< ColorDistance > (getMatrix("featuresLab"), params);
+    m_flann = new cv::flann::GenericIndex< ColorDistance > (getMatrix("paletteLab"), params);
 
-    QString features_file = m_parentDir.filePath("features.png");
-    cv::imwrite( features_file.toStdString(), cv::Mat(getMatrix("featuresRGB").rows, 1, CV_8UC3, getMatrix("featuresRGB").data) );
+    QString palette_file = m_parentDir.filePath("palette.png");
+    cv::imwrite( palette_file.toStdString(), cv::Mat(getMatrix("paletteRGB").rows, 1, CV_8UC3, getMatrix("paletteRGB").data) );
 
     QString flann_file = m_parentDir.filePath("flann.dat");
     m_flann->save( flann_file.toStdString() );
@@ -603,7 +630,7 @@ void SnapshotModel::on_colorDiffThreshold_valueChanged()
 
 void SnapshotModel::on_colorDiffThreshold_sliderPressed()
 {
-    clearLayer("count.cards");
+    clearLayer("count.contours");
     m_showColorDiff = true;
     updateViews();
 }
@@ -640,5 +667,85 @@ void SnapshotModel::on_mouseLogic_rectUpdated(QRectF rect, Qt::MouseButton butto
 void SnapshotModel::on_mouseLogic_rectSelected(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods)
 {
     m_rectSelection->setVisible(false);
+    if (button == Qt::LeftButton)
+        mergeContours(rect);
+    else
+        clearContours(rect);
 }
 
+void SnapshotModel::mergeContours(QRectF rect)
+{
+    qDebug() << "TODO merge contours in" << rect;
+    switch(m_mode) {
+    case TRAIN:
+        break;
+    case COUNT:
+        break;
+    }
+    updateViews();
+}
+
+void SnapshotModel::clearContours(QRectF rect)
+{
+    if (m_mode != TRAIN && m_mode != COUNT)
+        return;
+
+    clearContours(rect, layer( m_mode == TRAIN ? "train.contours." + m_color : "count.contours"));
+    updateViews();
+}
+
+void SnapshotModel::clearContours(QRectF rect, QGraphicsItem * layer)
+{
+    // collect selected contours
+    QList<QGraphicsItem *>items = m_scene->items(rect,Qt::ContainsItemShape);
+    QList<QGraphicsPolygonItem *>poly_items;
+    foreach(QGraphicsItem *i, items) {
+        QGraphicsPolygonItem * pi = qgraphicsitem_cast<QGraphicsPolygonItem *>(i);
+        if (pi && layer->isAncestorOf(pi))
+            poly_items << pi;
+    }
+    // remove them
+    foreach(QGraphicsPolygonItem * pi, poly_items)
+        delete pi;
+}
+
+QList< QPolygon >  SnapshotModel::detectContours(const QString &maskAndLayerName, bool addToScene, int simple)
+{
+    if (!m_matrices.contains(maskAndLayerName))
+        return QList< QPolygon >();
+
+    std::vector< std::vector< cv::Point > > contours;
+    cv::findContours(getMatrix(maskAndLayerName).clone(), // clone because findContours corrupts the mask
+                     contours,
+                     CV_RETR_EXTERNAL,
+                     CV_CHAIN_APPROX_TC89_L1);
+
+    QList< QPolygon > polygons;
+
+    // simplify and convert contours to Qt polygons
+    foreach(std::vector< cv::Point > contour, contours ) {
+        QPolygon polygon;
+        if (simple > 0) {
+            std::vector< cv::Point > approx;
+            // simplify contours
+            cv::approxPolyDP( contour, approx, simple, true);
+            polygon = toQPolygon(approx);
+        } else
+            polygon = toQPolygon(contour);
+        polygons << polygon;
+
+        if (addToScene)
+            addContour(polygon, maskAndLayerName);
+    }
+
+    if (addToScene)
+        updateViews();
+
+    return polygons;
+}
+
+void SnapshotModel::addContour(const QPolygon &contour, const QString &name)
+{
+    QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( contour, layer(name) );
+    poly_item->setPen(m_pens["white"]);
+}

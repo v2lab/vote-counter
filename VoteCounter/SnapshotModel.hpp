@@ -21,7 +21,8 @@ public:
 
     enum ItemData {
         ITEM_NAME,
-        ITEM_FULLNAME
+        ITEM_FULLNAME,
+        POLYGONS_CONTOUR
     };
 
     static const int COLOR_GRADATIONS = 5;
@@ -43,7 +44,15 @@ public slots:
     void pick(int x, int y);
     void unpick(int x, int y);
     void clearLayer(const QString& name);
-    void on_clearTrainLayer_clicked();
+
+    QList< QPolygon > detectContours(const QString& maskAndLayerName, bool addToScene = true, int simple = 1);
+    void addContour(const QPolygon& contour, const QString& name);
+
+    void mergeContours(QRectF rect);
+    void clearContours(QRectF rect);
+    void clearContours(QRectF rect, QGraphicsItem * layer);
+
+    void on_resetLayer_clicked();
     void on_learn_clicked();
     void on_count_clicked();
     void on_trainModeGroup_buttonClicked( QAbstractButton * button );
@@ -57,11 +66,11 @@ public slots:
     void on_mouseLogic_rectUpdated(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods);
     void on_mouseLogic_rectSelected(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods);
 
-
 protected:
     static QStringSet s_cacheableImages;
     static QStringSet s_resizedImages;
     static QStringList s_colorNames;
+    static QStringList s_persistentMasks;
 
     QString m_originalPath;
     QDir m_parentDir, m_cacheDir;
@@ -87,7 +96,7 @@ protected:
     void loadData();
     QGraphicsItem * layer(const QString& name);
     void selectByFlood(int x, int y);
-    void showFeatures();
+    void showPalette();
     void buildFlannRecognizer();
 
     void classifyPixels();

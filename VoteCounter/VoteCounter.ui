@@ -134,7 +134,7 @@
             </widget>
            </item>
            <item row="1" column="5">
-            <widget class="QPushButton" name="clearTrainLayer">
+            <widget class="QPushButton" name="resetLayer">
              <property name="toolTip">
               <string>clear all train examples of the current color</string>
              </property>
