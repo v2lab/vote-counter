@@ -210,7 +210,7 @@ void SnapshotModel::floodPickContour(int x, int y, int fuzz, const QString& laye
 
     cv::Rect bounds;
     cv::Mat pickMask( mask.rows, mask.cols, CV_8UC1, cv::Scalar(0) );
-    int res = cv::floodFill(input, mask,
+    int res = cv::floodFill(input, pickMask,
                             cv::Point(x,y),
                             0, // unused
                             &bounds,
@@ -218,23 +218,27 @@ void SnapshotModel::floodPickContour(int x, int y, int fuzz, const QString& laye
                             cv::Scalar( fuzz,fuzz,fuzz ),
                             cv::FLOODFILL_MASK_ONLY | cv::FLOODFILL_FIXED_RANGE );
 
+
+
     if (res < 1) return;
 
     // merge masks
-    cv::Mat(mask, bounds) |= cv::Mat(pickMask, bounds);
+    cv::Mat(mask, bounds) |= cv::Mat(pickMask, bounds) * 255;
 
     // if intersected some polygons - remove these polygons and grow ROI with their bounds
     QRect q_bounds = toQt(bounds);
     // shift to image coordinates (compensate for the mask border)
     q_bounds.translate(-1,-1);
     QGraphicsItem * contourGroup = layer( layerName );
-    foreach(QGraphicsPolygonItem * poly_item, selectChildren<QGraphicsPolygonItem *>(contourGroup)) {
-        QRect bounds = poly_item->polygon().boundingRect().toRect();
-        if (q_bounds.intersects( bounds )) {
-            q_bounds = q_bounds.united(bounds);
-            delete poly_item;
-        }
+    foreach(QGraphicsItem * item, m_scene->items( q_bounds, Qt::IntersectsItemShape )) {
+        QGraphicsPolygonItem * poly_item = qgraphicsitem_cast<QGraphicsPolygonItem *>(item);
+        if (!poly_item || !contourGroup->isAncestorOf(poly_item)) continue;
+        QRect poly_bounds = poly_item->polygon().boundingRect().toRect();
+        q_bounds = q_bounds.united(poly_bounds);
+        delete poly_item;
     }
+    q_bounds.adjust(-1,-1,1,1);
+    q_bounds = q_bounds.intersected( getImage("input").rect() );
     // back to mask coordinates
     q_bounds.translate(1,1);
     bounds = toCv(q_bounds);
@@ -727,4 +731,3 @@ void SnapshotModel::addContour(const QPolygon &contour, const QString &name)
     QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( contour, layer(name) );
     poly_item->setPen(m_pens["white"]);
 }
-
