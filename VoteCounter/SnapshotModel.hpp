@@ -74,7 +74,6 @@ protected:
 
     Mode m_mode;
     QString m_color;
-    QMap< QString, QList< QPoint > > m_colorPicks;
     QMap< QString, QPen > m_pens;
     QMap< QString, QGraphicsItem *> m_layers;
     bool m_showColorDiff;

@@ -101,7 +101,6 @@ void SnapshotModel::pick(int x, int y)
 
     if (m_mode == TRAIN) {
         if (input.rect().contains(x,y)) {
-            m_colorPicks[m_color].append( QPoint(x,y) ); // this is for saving / restoring
             selectByFlood(x,y);
             updateViews();
         }
@@ -144,51 +143,10 @@ void SnapshotModel::updateViews()
 
 void SnapshotModel::saveData()
 {
-    QFile file( m_cacheDir.filePath("data.json"));
-    file.open(QFile::WriteOnly);
-    QTextStream strm(&file);
-    QVariantHash conf;
-    QVariantHash picks;
-    foreach(QString color, m_colorPicks.keys()) {
-        QVariantList l;
-        foreach(QPoint p, m_colorPicks[color])
-            l << p.x() << p.y();
-        picks[color] = l;
-    }
-    conf["picks"] = picks;
-    strm << Json::serialize(conf);
 }
 
 void SnapshotModel::loadData()
 {
-    QFile file( m_cacheDir.filePath("data.json"));
-    file.open(QFile::ReadOnly);
-    QTextStream strm(&file);
-    QString json = strm.readAll();
-    QVariantMap parsed = Json::parse(json).toMap();
-
-    { // load the picks
-        Mode old_mode = m_mode;
-        QString old_color = m_color;
-
-        QVariantMap picks = parsed["picks"].toMap();
-        foreach(QString color, picks.keys()) {
-            setTrainMode(color);
-            QVariantList list = picks[color].toList();
-            QVector<QVariant> array;
-            foreach(QVariant v, list) array << v;
-
-            for(int i=0; i<array.size(); i+=2) {
-                int x = array[i].toInt(), y = array[i+1].toInt();
-                pick(x,y);
-            }
-        }
-
-        m_mode = old_mode;
-        m_color = old_color;
-    }
-
-    updateViews();
 }
 
 QGraphicsItem * SnapshotModel::layer(const QString &name)
@@ -309,12 +267,6 @@ void SnapshotModel::unpick(int x, int y)
     }
     if (!unpicked_poly)
         return;
-
-    // 2. find which picks are in this contour and remove them
-    foreach(const QPoint& pick, m_colorPicks[color]) {
-        if (unpicked_poly->polygon().containsPoint(pick, Qt::OddEvenFill))
-            m_colorPicks[color].removeOne(pick);
-    }
 
     // 3. (un)draw this contour onto the mask
     cv::Mat mask = getMatrix(color+"_pickMask");
@@ -594,7 +546,6 @@ void SnapshotModel::on_clearTrainLayer_clicked()
         clearLayer( QString("train.%1.contours").arg(m_color) );
         m_matrices.remove( m_color + "_pickMask" );
     }
-    m_colorPicks[m_color].clear();
     updateViews();
 }
 
