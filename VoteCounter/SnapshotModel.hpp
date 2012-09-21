@@ -45,9 +45,6 @@ public slots:
     void unpick(int x, int y);
     void clearLayer(const QString& name);
 
-    QList< QPolygon > detectContours(const QString& maskAndLayerName, bool addToScene = true, int simple = 1);
-    void addContour(const QPolygon& contour, const QString& name);
-
     void mergeContours(QRectF rect);
     void clearContours(QRectF rect);
     void clearContours(QRectF rect, QGraphicsItem * layer);
@@ -95,13 +92,27 @@ protected:
     void saveData();
     void loadData();
     QGraphicsItem * layer(const QString& name);
-    void selectByFlood(int x, int y);
     void showPalette();
     void buildFlannRecognizer();
 
     void classifyPixels();
     void computeColorDiff();
     void countCards();
+
+    void addContour(const QPolygon& contour, const QString& name);
+    void floodPickContour(int x, int y, int fuzz, const QString& layerName);
+    QList< QPolygon > detectContours(const QString& maskAndLayerName, bool addToScene = true, cv::Rect maskROI = cv::Rect(), int simple = 1);
+
+    template<typename PItem>
+    QList<PItem> selectChildren(const QGraphicsItem* group) {
+        QList<PItem> result;
+        foreach(QGraphicsItem* item, group->childItems()) {
+            PItem cast = qgraphicsitem_cast<PItem>(item);
+            if (cast)
+                result << cast;
+        }
+        return result;
+    }
 
     QVariant uiValue(const QString& name);
 };

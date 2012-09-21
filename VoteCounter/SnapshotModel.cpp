@@ -103,7 +103,8 @@ void SnapshotModel::pick(int x, int y)
 
     if (m_mode == TRAIN) {
         if (input.rect().contains(x,y)) {
-            selectByFlood(x,y);
+            int fuzz = uiValue("pickFuzz").toInt();
+            floodPickContour(x, y, fuzz, "train.contours." + m_color);
             updateViews();
         }
     }
@@ -136,7 +137,6 @@ void SnapshotModel::updateViews()
         break;
     }
 
-
     // force repaint
     foreach(QGraphicsView * view,m_scene->views()) {
         view->viewport()->update();
@@ -158,7 +158,7 @@ void SnapshotModel::saveData()
 void SnapshotModel::loadData()
 {
     cv::Mat input = getMatrix("input");
-    int mrows = input.rows + 1, mcols = input.cols + 1;
+    int mrows = input.rows + 2, mcols = input.cols + 2;
 
     foreach(QString name, s_persistentMasks) {
         QString fname = m_cacheDir.filePath(name + ".png");
@@ -202,71 +202,44 @@ void SnapshotModel::clearLayer(const QString& name)
     updateViews();
 }
 
-void SnapshotModel::selectByFlood(int x, int y)
+void SnapshotModel::floodPickContour(int x, int y, int fuzz, const QString& layerName)
 {
     // flood fill inside roi
     cv::Mat input = getMatrix("lab");
-    cv::Mat mask = getMatrix( "train.contours." + m_color);
-    cv::Rect bounds;
+    cv::Mat mask = getMatrix( layerName );
 
-    int pf = uiValue("pickFuzz").toInt();
+    cv::Rect bounds;
+    cv::Mat pickMask( mask.rows, mask.cols, CV_8UC1, cv::Scalar(0) );
     int res = cv::floodFill(input, mask,
                             cv::Point(x,y),
                             0, // unused
                             &bounds,
-                            // FIXME the range should be preference
-                            cv::Scalar( pf,pf,pf ),
-                            cv::Scalar( pf,pf,pf ),
+                            cv::Scalar( fuzz,fuzz,fuzz ),
+                            cv::Scalar( fuzz,fuzz,fuzz ),
                             cv::FLOODFILL_MASK_ONLY | cv::FLOODFILL_FIXED_RANGE );
 
     if (res < 1) return;
 
+    // merge masks
+    cv::Mat(mask, bounds) |= cv::Mat(pickMask, bounds);
+
     // if intersected some polygons - remove these polygons and grow ROI with their bounds
     QRect q_bounds = toQt(bounds);
-    QGraphicsItem * colorLayer = layer( "train.contours." + m_color );
-    foreach(QGraphicsItem * item, colorLayer->childItems()) {
-        QGraphicsPolygonItem * poly_item = qgraphicsitem_cast<QGraphicsPolygonItem *>(item);
-        if (!poly_item) continue;
+    // shift to image coordinates (compensate for the mask border)
+    q_bounds.translate(-1,-1);
+    QGraphicsItem * contourGroup = layer( layerName );
+    foreach(QGraphicsPolygonItem * poly_item, selectChildren<QGraphicsPolygonItem *>(contourGroup)) {
         QRect bounds = poly_item->polygon().boundingRect().toRect();
         if (q_bounds.intersects( bounds )) {
             q_bounds = q_bounds.united(bounds);
             delete poly_item;
         }
     }
-    // intersect with the image
-    q_bounds = q_bounds.intersected( getImage("input").rect() );
-
+    // back to mask coordinates
+    q_bounds.translate(1,1);
     bounds = toCv(q_bounds);
 
-    // cut out from mask
-    cv::Mat mask0;
-    cv::Mat( mask, cv::Rect( bounds.x+1,bounds.y+1,bounds.width,bounds.height ) ).copyTo(mask0);
-    // find contours there and add to the polygons list
-    std::vector< std::vector< cv::Point > > contours;
-    cv::findContours(mask0,
-                     contours,
-                     CV_RETR_EXTERNAL,
-                     CV_CHAIN_APPROX_TC89_L1,
-                     // offset: compensate for ROI and flood fill mask border
-                     bounds.tl() );
-
-    // now refresh contour visuals
-    foreach( const std::vector< cv::Point >& contour, contours ) {
-        std::vector< cv::Point > approx;
-        // simplify contours
-        int simple = 1;
-        QPolygon polygon;
-        if (simple > 0) {
-            std::vector< cv::Point > approx;
-            // simplify contours
-            cv::approxPolyDP( contour, approx, simple, true);
-            polygon = toQPolygon(approx);
-        } else
-            polygon = toQPolygon(contour);
-        QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( polygon, colorLayer );
-        poly_item->setPen(m_pens["white"]);
-    }
-
+    detectContours( layerName, true, bounds );
 }
 
 void SnapshotModel::unpick(int x, int y)
@@ -279,9 +252,7 @@ void SnapshotModel::unpick(int x, int y)
         QString contoursLayerPath = "train.contours." + c;
         if (! m_layers.contains(contoursLayerPath)) continue;
         QGraphicsItem * contoursLayer = layer(contoursLayerPath);
-        foreach(QGraphicsItem * item, contoursLayer->childItems()) {
-            QGraphicsPolygonItem * poly_item = qgraphicsitem_cast<QGraphicsPolygonItem *>(item);
-            if (!poly_item) continue;
+        foreach(QGraphicsPolygonItem * poly_item, selectChildren<QGraphicsPolygonItem *>(contoursLayer)) {
             if (poly_item->polygon().containsPoint(QPointF(x,y), Qt::OddEvenFill)) {
                 unpicked_poly = poly_item;
                 color = c;
@@ -709,16 +680,23 @@ void SnapshotModel::clearContours(QRectF rect, QGraphicsItem * layer)
         delete pi;
 }
 
-QList< QPolygon >  SnapshotModel::detectContours(const QString &maskAndLayerName, bool addToScene, int simple)
+QList< QPolygon >  SnapshotModel::detectContours(const QString &maskAndLayerName,
+                                                 bool addToScene,
+                                                 cv::Rect maskROI,
+                                                 int simple)
 {
     if (!m_matrices.contains(maskAndLayerName))
         return QList< QPolygon >();
 
+    cv::Mat mask = getMatrix(maskAndLayerName);
+    if (maskROI.width)
+        mask = cv::Mat(mask, maskROI);
     std::vector< std::vector< cv::Point > > contours;
-    cv::findContours(getMatrix(maskAndLayerName).clone(), // clone because findContours corrupts the mask
+    cv::findContours(mask.clone(), // clone because findContours corrupts the mask
                      contours,
                      CV_RETR_EXTERNAL,
-                     CV_CHAIN_APPROX_TC89_L1);
+                     CV_CHAIN_APPROX_TC89_L1,
+                     maskROI.tl() - cv::Point(1,1)); // compensate for ROI and mask border
 
     QList< QPolygon > polygons;
 
@@ -749,3 +727,4 @@ void SnapshotModel::addContour(const QPolygon &contour, const QString &name)
     QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( contour, layer(name) );
     poly_item->setPen(m_pens["white"]);
 }
+
