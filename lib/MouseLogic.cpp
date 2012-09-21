@@ -18,6 +18,7 @@ bool MouseLogic::eventFilter(QObject *, QEvent *event)
     case QEvent::GraphicsSceneMousePress:
         Q_ASSERT(gsm_event);
         m_state = PRESSED;
+        m_button = gsm_event->button();
         m_firstPoint = gsm_event->scenePos();
         return true; // event's handled
     case QEvent::GraphicsSceneMouseRelease:
@@ -28,8 +29,10 @@ bool MouseLogic::eventFilter(QObject *, QEvent *event)
             m_state = IDLE;
             return true;
         case SELECTING_RECT:
-            m_state = IDLE;
-            emit rectSelected( makeRect( m_firstPoint, gsm_event->scenePos() ), gsm_event->button(), gsm_event->modifiers());
+            if (gsm_event->button() == m_button) {
+                m_state = IDLE;
+                emit rectSelected( makeRect( m_firstPoint, gsm_event->scenePos() ), gsm_event->button(), gsm_event->modifiers());
+            }
             return true;
         }
         break;
@@ -39,7 +42,7 @@ bool MouseLogic::eventFilter(QObject *, QEvent *event)
         case PRESSED:
             m_state = SELECTING_RECT;
         case SELECTING_RECT:
-            emit rectUpdated( makeRect( m_firstPoint, gsm_event->scenePos() ), gsm_event->button(), gsm_event->modifiers());
+            emit rectUpdated( makeRect( m_firstPoint, gsm_event->scenePos() ), m_button, gsm_event->modifiers());
             return true;
         }
         break;

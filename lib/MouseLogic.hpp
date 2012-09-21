@@ -30,6 +30,7 @@ protected:
 
     State m_state;
     QPointF m_firstPoint;
+    Qt::MouseButton m_button;
 };
 
 #endif // MOUSELOGIC_HPP
