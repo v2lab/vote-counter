@@ -35,6 +35,12 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
 {
 
     m_pens["white"] = QPen(Qt::white);
+    m_pens["+selection"] = QPen(QColor(128,255,128,128), 0);
+    m_pens["-selection"] = QPen(QColor(255,128,128,128), 0);
+    m_rectSelection = new QGraphicsRectItem(0,m_scene);
+    m_rectSelection->setVisible(false);
+    m_rectSelection->setZValue(100.0);
+
     m_mouseLogic->setObjectName("mouseLogic");
     QMetaUtilities::connectSlotsByName( parent, this );
 
@@ -675,11 +681,13 @@ void SnapshotModel::on_mouseLogic_pointClicked(QPointF point, Qt::MouseButton bu
 
 void SnapshotModel::on_mouseLogic_rectUpdated(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods)
 {
-
+    m_rectSelection->setVisible(true);
+    m_rectSelection->setRect(rect);
+    m_rectSelection->setPen(m_pens[(button == Qt::LeftButton) ? "+selection" : "-selection"]);
 }
 
 void SnapshotModel::on_mouseLogic_rectSelected(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods)
 {
-
+    m_rectSelection->setVisible(false);
 }
 

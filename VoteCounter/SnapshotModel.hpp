@@ -70,6 +70,8 @@ protected:
 
     QGraphicsScene * m_scene;
     MouseLogic * m_mouseLogic;
+    QGraphicsRectItem * m_rectSelection;
+
     Mode m_mode;
     QString m_color;
     QMap< QString, QList< QPoint > > m_colorPicks;
