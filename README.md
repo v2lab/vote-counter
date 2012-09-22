@@ -8,7 +8,7 @@ The app is an image viewer with point-and-click interface for training card colo
 
 ### Training
 
-User selects a color that needs training and clicks on several examples on the currently loaded snapshot. Flood feel algorithm is used to understand what she means. For a time being the filled contour is marked on the invisible `train.contours.COLOR` map, is shown as a white outline and counted.
+User selects a color that needs training and clicks on several examples on the currently loaded snapshot. [Flood fill][5] algorithm is used to understand what she means. For a time being the filled contour is marked on the invisible `train.contours.COLOR` map, is shown as a white outline and counted.
 
 Once enough cards of the color are pointed, user selects a different color and repeats the procedure.
 
@@ -30,4 +30,4 @@ The counter would still make some mistakes, which can be corrected manually by e
 [2]: http://en.wikipedia.org/wiki/K-means_clustering
 [3]: http://en.wikipedia.org/wiki/K-nearest_neighbor_algorithm
 [4]: http://en.wikipedia.org/wiki/Lab_color_space#CIELAB
-
+[5]: http://en.wikipedia.org/wiki/Flood_fill
