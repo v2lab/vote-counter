@@ -99,14 +99,37 @@ QVariant SnapshotModel::uiValue(const QString &name)
 
 void SnapshotModel::pick(int x, int y)
 {
+    int fuzz = uiValue("pickFuzz").toInt();
     QImage input = getImage("input");
+    QString layerName;
+    if (input.rect().contains(x,y)) {
+        switch(m_mode) {
+        case COUNT:
+            // classify picked pixel first...
+            if (!m_flann) {
+                qWarning() << "Teach me colors first!";
+                return;
+            } else {
+                std::vector< float > query(3);
+                std::vector< int > indices(1);
+                std::vector< float > dists(1);
 
-    if (m_mode == TRAIN) {
-        if (input.rect().contains(x,y)) {
-            int fuzz = uiValue("pickFuzz").toInt();
-            floodPickContour(x, y, fuzz, "train.contours." + m_color);
-            updateViews();
+                cv::Mat lab = getMatrix("lab");
+                query[0] = lab.ptr<float>(y)[3*x];
+                query[1] = lab.ptr<float>(y)[3*x + 1];
+                query[2] = lab.ptr<float>(y)[3*x + 2];
+
+                cvflann::SearchParams params(cvflann::FLANN_CHECKS_UNLIMITED, 0);
+                m_flann->knnSearch(query, indices, dists, indices.size(), params);
+                layerName = "count.contours." + s_colorNames[ indices[0] / COLOR_GRADATIONS ];
+            }
+            break;
+        case TRAIN:
+            layerName = "train.contours." + m_color;
+            break;
         }
+        floodPickContour(x, y, fuzz, layerName);
+        updateViews();
     }
 }
 
@@ -215,7 +238,7 @@ void SnapshotModel::floodPickContour(int x, int y, int fuzz, const QString& laye
     cv::Mat mask = getMatrix( layerName );
 
     cv::Rect bounds;
-    cv::Mat pickMask( mask.rows, mask.cols, CV_8UC1, cv::Scalar(0) );
+    cv::Mat pickMask( input.rows+2, input.cols+2, CV_8UC1, cv::Scalar(0) );
     int res = cv::floodFill(input, pickMask,
                             cv::Point(x,y),
                             0, // unused
@@ -224,17 +247,17 @@ void SnapshotModel::floodPickContour(int x, int y, int fuzz, const QString& laye
                             cv::Scalar( fuzz,fuzz,fuzz ),
                             4 | cv::FLOODFILL_MASK_ONLY | cv::FLOODFILL_FIXED_RANGE );
 
-
-
     if (res < 1) return;
 
     // merge masks
-    cv::Mat(mask, bounds) |= cv::Mat(pickMask, bounds) * 255;
+    cv::Rect img_bounds = bounds - cv::Point(1,1);
+    qDebug() << "flood fill bounds:" << bounds.x << bounds.y << bounds.width << bounds.height;
+    qDebug() << "  in image coords:" << img_bounds.x << img_bounds.y << img_bounds.width << img_bounds.height;
+    cv::Mat(mask, img_bounds) |= cv::Mat(pickMask, bounds) * 255;
 
     // if intersected some polygons - remove these polygons and grow ROI with their bounds
-    QRect q_bounds = toQt(bounds);
-    // shift to image coordinates (compensate for the mask border)
-    q_bounds.translate(-1,-1);
+    QRect q_bounds = toQt(img_bounds);
+    q_bounds.adjust(-1,-1,1,1);
     QGraphicsItem * contourGroup = layer( layerName );
     foreach(QGraphicsItem * item, m_scene->items( q_bounds, Qt::IntersectsItemShape )) {
         QGraphicsPolygonItem * poly_item = qgraphicsitem_cast<QGraphicsPolygonItem *>(item);
@@ -245,11 +268,9 @@ void SnapshotModel::floodPickContour(int x, int y, int fuzz, const QString& laye
     }
     q_bounds.adjust(-1,-1,1,1);
     q_bounds = q_bounds.intersected( getImage("input").rect() );
-    // back to mask coordinates
-    q_bounds.translate(1,1);
-    bounds = toCv(q_bounds);
+    img_bounds = toCv(q_bounds);
 
-    detectContours( layerName, true, bounds );
+    detectContours( layerName, true, img_bounds );
 }
 
 void SnapshotModel::unpick(int x, int y)
@@ -499,8 +520,8 @@ cv::Mat SnapshotModel::getMatrix(const QString &tag)
             cv::Mat input = getMatrix("input");
             input.convertTo(matrix, CV_32FC3, 1.0/255.0);
             cv::cvtColor( matrix, matrix, CV_RGB2Lab );
-        } else if (tag.startsWith("train.contours.")) {
-            matrix = cv::Mat(inputSize.height+2, inputSize.width+2, CV_8UC1, cv::Scalar(0));
+        } else if (tag.contains(".contours.")) {
+            matrix = cv::Mat(inputSize.height, inputSize.width, CV_8UC1, cv::Scalar(0));
         } else if (tag == "paletteRGB") {
             cv::Mat paletteLab = getMatrix("paletteLab");
             matrix = cv::Mat( paletteLab.rows, 3, CV_32FC1 );
@@ -690,7 +711,7 @@ QList< QPolygon >  SnapshotModel::detectContours(const QString &maskAndLayerName
                      contours,
                      CV_RETR_EXTERNAL,
                      CV_CHAIN_APPROX_TC89_L1,
-                     maskROI.tl() - cv::Point(1,1)); // compensate for ROI and mask border
+                     maskROI.tl()); // compensate for ROI
 
     QList< QPolygon > polygons;
 
