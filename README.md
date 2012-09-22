@@ -14,7 +14,7 @@ Once enough cards of the color are pointed, user selects a different color and r
 
 When all colors are sampled user clicks "learn colors" button and the app collects all the selected pixels in bunches per color and performs [K-means clustering][2] on each bunch. Number of clusters (i.e. color gradations) is hardcoded (currently to 5). Learned colors are displayed for human inspection.
 
-The app would then construct a [K Nearest Neighbors][3] classifier using learned color gradations as features.
+The app then constructs a [K Nearest Neighbors][3] classifier using learned color gradations as features.
 
 NB: clustering and KNN are performed in [CIELab color space][4] using Euclidean distance as dissimilarity measure.
 
