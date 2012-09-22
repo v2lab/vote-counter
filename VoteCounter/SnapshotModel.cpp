@@ -105,24 +105,12 @@ void SnapshotModel::pick(int x, int y)
     if (input.rect().contains(x,y)) {
         switch(m_mode) {
         case COUNT:
-            // classify picked pixel first...
-            if (!m_flann) {
-                qWarning() << "Teach me colors first!";
+            if (!m_matrices.contains("indices")) {
+                qWarning() << "Count cards first!";
                 return;
-            } else {
-                std::vector< float > query(3);
-                std::vector< int > indices(1);
-                std::vector< float > dists(1);
-
-                cv::Mat lab = getMatrix("lab");
-                query[0] = lab.ptr<float>(y)[3*x];
-                query[1] = lab.ptr<float>(y)[3*x + 1];
-                query[2] = lab.ptr<float>(y)[3*x + 2];
-
-                cvflann::SearchParams params(cvflann::FLANN_CHECKS_UNLIMITED, 0);
-                m_flann->knnSearch(query, indices, dists, indices.size(), params);
-                layerName = "count.contours." + s_colorNames[ indices[0] / COLOR_GRADATIONS ];
-            }
+            } else
+                // use the result of previous pixel classification
+                layerName = "count.contours." + s_colorNames[ getMatrix("indices").at<int>(y,x) / COLOR_GRADATIONS ];
             break;
         case TRAIN:
             layerName = "train.contours." + m_color;
