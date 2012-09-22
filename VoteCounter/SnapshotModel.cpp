@@ -216,7 +216,7 @@ void SnapshotModel::floodPickContour(int x, int y, int fuzz, const QString& laye
                             &bounds,
                             cv::Scalar( fuzz,fuzz,fuzz ),
                             cv::Scalar( fuzz,fuzz,fuzz ),
-                            cv::FLOODFILL_MASK_ONLY | cv::FLOODFILL_FIXED_RANGE );
+                            4 | cv::FLOODFILL_MASK_ONLY | cv::FLOODFILL_FIXED_RANGE );
 
 
 
@@ -248,35 +248,21 @@ void SnapshotModel::floodPickContour(int x, int y, int fuzz, const QString& laye
 
 void SnapshotModel::unpick(int x, int y)
 {
-    // 1. find which contour we're in (shouldn't we capture it elsewhere then?)
-    QString color;
+    // find which contour we're in (shouldn't we capture it elsewhere then?)
     QGraphicsPolygonItem * unpicked_poly = 0;
-
-    foreach(QString c, s_colorNames) {
-        QString contoursLayerPath = "train.contours." + c;
-        if (! m_layers.contains(contoursLayerPath)) continue;
-        QGraphicsItem * contoursLayer = layer(contoursLayerPath);
-        foreach(QGraphicsPolygonItem * poly_item, selectChildren<QGraphicsPolygonItem *>(contoursLayer)) {
-            if (poly_item->polygon().containsPoint(QPointF(x,y), Qt::OddEvenFill)) {
-                unpicked_poly = poly_item;
-                color = c;
-                break;
-            }
-        }
-        if (unpicked_poly)
-            break;
+    foreach(QGraphicsItem * i, m_scene->items(QPointF(x,y))) {
+        unpicked_poly = qgraphicsitem_cast<QGraphicsPolygonItem *>(i);
+        if (unpicked_poly) break;
     }
+
     if (!unpicked_poly)
         return;
 
-    // 3. (un)draw this contour onto the mask
-    cv::Mat mask = getMatrix("train.contours." + color);
-    std::vector< cv::Point > contour = toCvInt( unpicked_poly->polygon() );
-    cv::Point * pts[] = { contour.data() };
-    int npts[] = { contour.size() };
-    cv::fillPoly( mask, (const cv::Point**)pts, npts, 1, cv::Scalar(0), 8, 0,
-                  // compensate for mask border
-                  cv::Point(1,1) );
+    QString layerName = unpicked_poly->parentItem()->data(ITEM_FULLNAME).toString();
+
+    // (un)draw this contour onto the mask
+    cv::Mat mask = getMatrix(layerName);
+    cv::floodFill( mask, cv::Point(x+1,y+1), cv::Scalar(0), 0, cv::Scalar(), cv::Scalar(), 8 | cv::FLOODFILL_FIXED_RANGE);
 
     // 4. delete the polygon itself
     delete unpicked_poly;
