@@ -67,6 +67,9 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="tabShape">
+          <enum>QTabWidget::Rounded</enum>
+         </property>
          <property name="currentIndex">
           <number>0</number>
          </property>
@@ -75,32 +78,29 @@
            <string>Train</string>
           </attribute>
           <layout class="QGridLayout" name="gridLayout_2">
-           <property name="horizontalSpacing">
-            <number>3</number>
-           </property>
-           <property name="verticalSpacing">
-            <number>1</number>
-           </property>
            <property name="margin">
             <number>0</number>
            </property>
-           <item row="1" column="1">
-            <widget class="QRadioButton" name="greenTrainMode">
-             <property name="styleSheet">
-              <string notr="true">background: &quot;#AAFFAA&quot;;</string>
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <item row="0" column="8">
+            <widget class="QPushButton" name="resetLayer">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="toolTip">
+              <string>clear all train examples of the current color</string>
              </property>
              <property name="text">
-              <string>green</string>
+              <string>reset color</string>
              </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-             <attribute name="buttonGroup">
-              <string>trainModeGroup</string>
-             </attribute>
             </widget>
            </item>
-           <item row="1" column="0">
+           <item row="0" column="0">
             <spacer name="horizontalSpacer_3">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
@@ -113,7 +113,7 @@
              </property>
             </spacer>
            </item>
-           <item row="1" column="6">
+           <item row="0" column="9">
             <spacer name="horizontalSpacer_4">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
@@ -126,59 +126,48 @@
              </property>
             </spacer>
            </item>
-           <item row="2" column="5">
-            <widget class="QPushButton" name="learn">
-             <property name="text">
-              <string>learn colors</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="5">
-            <widget class="QPushButton" name="resetLayer">
-             <property name="toolTip">
-              <string>clear all train examples of the current color</string>
+           <item row="0" column="2">
+            <widget class="QRadioButton" name="greenTrainMode">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
              </property>
              <property name="text">
-              <string>reset color</string>
+              <string>green</string>
              </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+             <attribute name="buttonGroup">
+              <string>trainModeGroup</string>
+             </attribute>
             </widget>
            </item>
-           <item row="2" column="1">
-            <widget class="QLabel" name="label_3">
+           <item row="0" column="4">
+            <widget class="QRadioButton" name="pinkTrainMode">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="text">
-              <string>pick fuzz</string>
+              <string>pink</string>
              </property>
-             <property name="alignment">
-              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-             </property>
+             <attribute name="buttonGroup">
+              <string>trainModeGroup</string>
+             </attribute>
             </widget>
            </item>
-           <item row="2" column="3">
-            <widget class="QSpinBox" name="pickFuzz">
-             <property name="alignment">
-              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-             </property>
-             <property name="suffix">
-              <string/>
-             </property>
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>255</number>
-             </property>
-             <property name="singleStep">
-              <number>1</number>
-             </property>
-             <property name="value">
-              <number>15</number>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="4">
+           <item row="0" column="6">
             <widget class="QRadioButton" name="yellowTrainMode">
-             <property name="styleSheet">
-              <string notr="true">background: &quot;#FFFFAA&quot;;</string>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
              </property>
              <property name="text">
               <string>yellow</string>
@@ -188,17 +177,103 @@
              </attribute>
             </widget>
            </item>
-           <item row="1" column="3">
-            <widget class="QRadioButton" name="pinkTrainMode">
+           <item row="3" column="8">
+            <widget class="QPushButton" name="learn">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>learn colors</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="2">
+            <widget class="QLabel" name="greenTrainCount">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="toolTip">
+              <string>green</string>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">QLabel {
+background: &quot;#AAFFAA&quot;;
+}</string>
+             </property>
+             <property name="lineWidth">
+              <number>0</number>
+             </property>
+             <property name="text">
+              <string>0</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+             <property name="indent">
+              <number>0</number>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="4">
+            <widget class="QLabel" name="pinkTrainCount">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="toolTip">
+              <string>pink</string>
+             </property>
              <property name="styleSheet">
               <string notr="true">background: &quot;#FF90E0&quot;;</string>
              </property>
-             <property name="text">
-              <string>pink</string>
+             <property name="lineWidth">
+              <number>0</number>
              </property>
-             <attribute name="buttonGroup">
-              <string>trainModeGroup</string>
-             </attribute>
+             <property name="text">
+              <string>0</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+             <property name="indent">
+              <number>0</number>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="6">
+            <widget class="QLabel" name="yellowTrainCount">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="toolTip">
+              <string>yellow</string>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background: &quot;#FFFFAA&quot;;</string>
+             </property>
+             <property name="lineWidth">
+              <number>0</number>
+             </property>
+             <property name="text">
+              <string>0</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+             <property name="indent">
+              <number>0</number>
+             </property>
             </widget>
            </item>
           </layout>
@@ -437,37 +512,7 @@ background: &quot;#AAFFAA&quot;;
            <property name="spacing">
             <number>2</number>
            </property>
-           <item row="0" column="1">
-            <widget class="QLabel" name="label">
-             <property name="text">
-              <string>snapshots directory</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="2">
-            <widget class="QPushButton" name="snapDirPicker">
-             <property name="text">
-              <string>CONFIGURE</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="3">
-            <spacer name="horizontalSpacer">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item row="0" column="0">
+           <item row="1" column="0" rowspan="2">
             <spacer name="horizontalSpacer_2">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
@@ -480,7 +525,7 @@ background: &quot;#AAFFAA&quot;;
              </property>
             </spacer>
            </item>
-           <item row="1" column="1">
+           <item row="3" column="1">
             <widget class="QLabel" name="label_2">
              <property name="text">
               <string extracomment="limit width / height of the working image to this number of pixels">working size limit</string>
@@ -490,7 +535,39 @@ background: &quot;#AAFFAA&quot;;
              </property>
             </widget>
            </item>
-           <item row="1" column="2">
+           <item row="3" column="3">
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>pick fuzz</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="4">
+            <widget class="QSpinBox" name="pickFuzz">
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+             </property>
+             <property name="suffix">
+              <string/>
+             </property>
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>255</number>
+             </property>
+             <property name="singleStep">
+              <number>1</number>
+             </property>
+             <property name="value">
+              <number>15</number>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="2">
             <widget class="QSpinBox" name="sizeLimit">
              <property name="minimum">
               <number>120</number>
@@ -505,6 +582,29 @@ background: &quot;#AAFFAA&quot;;
               <number>1024</number>
              </property>
             </widget>
+           </item>
+           <item row="1" column="1" colspan="4">
+            <widget class="QPushButton" name="snapDirPicker">
+             <property name="toolTip">
+              <string>Snapshots directory</string>
+             </property>
+             <property name="text">
+              <string>CONFIGURE</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="5">
+            <spacer name="horizontalSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </widget>

@@ -138,7 +138,10 @@ void SnapshotModel::updateViews()
     case TRAIN:
         layer("train")->setVisible(true);
         foreach(QString color, s_colorNames) {
-            layer( "train.contours." + color)->setVisible( color == m_color );
+            QGraphicsItem * l = layer( "train.contours." + color);
+            int count = l->childItems().count();
+            parent()->findChild<QLabel*>( color + "TrainCount" )->setText( QString("%1").arg( count ) );
+            l->setVisible( color == m_color );
         }
         break;
     case COUNT:
@@ -175,7 +178,7 @@ void SnapshotModel::saveData()
 void SnapshotModel::loadData()
 {
     cv::Mat input = getMatrix("input");
-    int mrows = input.rows + 2, mcols = input.cols + 2;
+    int mrows = input.rows, mcols = input.cols;
 
     foreach(QString name, s_persistentMasks) {
         QString fname = m_cacheDir.filePath(name + ".png");
