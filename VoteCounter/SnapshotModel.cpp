@@ -134,6 +134,12 @@ void SnapshotModel::updateViews()
         layer("count")->setVisible(true);
         layer("count.colorDiff")->setVisible( m_showColorDiff );
         layer("count.contours")->setVisible( !m_showColorDiff );
+
+        foreach(QString color, s_colorNames) {
+            int count = layer("count.contours." + color)->childItems().count();
+            parent()->findChild<QLabel*>( color + "Count" )->setText( QString("%1").arg( count ) );
+        }
+
         break;
     }
 
@@ -444,8 +450,6 @@ void SnapshotModel::countCards()
             poly_item->setPen(m_pens["white"]);
             count ++;
         }
-
-        parent()->findChild<QLabel*>( s_colorNames[i] + "Count" )->setText( QString("%1").arg( count ) );
     }
 }
 
