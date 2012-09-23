@@ -652,13 +652,28 @@ void SnapshotModel::on_mouseLogic_rectSelected(QRectF rect, Qt::MouseButton butt
 
 void SnapshotModel::mergeContours(QRectF rect)
 {
-    qDebug() << "TODO merge contours in" << rect;
-    switch(m_mode) {
-    case TRAIN:
-        break;
-    case COUNT:
-        break;
+    QMap<QString, QList<QGraphicsPolygonItem*> > collection;
+
+    foreach_item(QGraphicsPolygonItem*, pi, m_scene->items(rect, Qt::ContainsItemShape)) {
+        QString layerName = pi->parentItem()->data(ITEM_FULLNAME).toString();
+        collection[layerName] << pi;
     }
+
+    foreach(QString layerName, collection.keys()) {
+        if (collection[layerName].size() < 2) continue;
+        QPolygonF superpoly;
+        foreach(QGraphicsPolygonItem* pi, collection[layerName]) {
+            superpoly = superpoly.united( pi->polygon() );
+            delete pi;
+        }
+
+        std::vector<cv::Point2f> contour = toCv(superpoly);
+        cv::convexHull(contour, contour);
+        superpoly = toQPolygonF(contour);
+
+        addContour(superpoly, layerName, true);
+    }
+
     updateViews();
 }
 
@@ -729,8 +744,14 @@ QList< QPolygon >  SnapshotModel::detectContours(const QString &maskAndLayerName
     return polygons;
 }
 
-void SnapshotModel::addContour(const QPolygon &contour, const QString &name)
+void SnapshotModel::addContour(const QPolygonF &contour, const QString &name, bool paintToMask)
 {
     QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( contour, layer(name) );
     poly_item->setPen(m_pens["white"]);
+    if (paintToMask) {
+        cv::Mat mask = getMatrix(name);
+        std::vector< std::vector< cv::Point > > contours;
+        contours.push_back(toCvInt(contour ));
+        cv::fillPoly( mask, contours, cv::Scalar(255) );
+    }
 }

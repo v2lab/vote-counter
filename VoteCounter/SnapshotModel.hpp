@@ -98,7 +98,7 @@ protected:
     void computeColorDiff();
     void countCards();
 
-    void addContour(const QPolygon& contour, const QString& name);
+    void addContour(const QPolygonF& contour, const QString& name, bool paintToMask = false);
     void floodPickContour(int x, int y, int fuzz, const QString& layerName);
     QList< QPolygon > detectContours(const QString& maskAndLayerName, bool addToScene = true, cv::Rect maskROI = cv::Rect(), int simple = 1);
 
@@ -112,6 +112,19 @@ protected:
         }
         return result;
     }
+
+    template<typename PItem>
+    QList<PItem> filterItems(const QList<QGraphicsItem*>& list) {
+        QList<PItem> result;
+        foreach(QGraphicsItem* item, list) {
+            PItem cast = qgraphicsitem_cast<PItem>(item);
+            if (cast)
+                result << cast;
+        }
+        return result;
+    }
+
+#define foreach_item(PItem, i, list) foreach(PItem i, filterItems<PItem>(list))
 
     QVariant uiValue(const QString& name);
 };
