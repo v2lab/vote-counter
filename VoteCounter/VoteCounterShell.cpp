@@ -22,6 +22,11 @@ VoteCounterShell::VoteCounterShell(QWidget *parent) :
 {
     m_fsModel->setObjectName("fsModel");
 
+    m_waitDialog = new QMessageBox(this);
+    m_waitDialog->setWindowTitle("Counting...");
+    m_waitDialog->setText("Please wait while we count the cards");
+    m_waitDialog->setStandardButtons(QMessageBox::NoButton);
+    m_waitDialog->setWindowModality(Qt::WindowModal);
 }
 
 VoteCounterShell::~VoteCounterShell()
@@ -121,6 +126,11 @@ void VoteCounterShell::on_snapsList_clicked( const QModelIndex & index )
     QString snap = index.data( ).toString();
     QString dir = m_settings.value("snaps_dir").toString();
     loadSnapshot( dir + "/" + snap);
+
+    connect(m_snapshot, SIGNAL(willCount()), SLOT(willCount()));
+    connect(m_snapshot, SIGNAL(doneCounting()), SLOT(doneCounting()));
+
+    m_snapshot->maybeCount();
 }
 
 void VoteCounterShell::loadSnapshot(const QString &path)
@@ -165,6 +175,18 @@ void VoteCounterShell::recallLastWorkMode()
     Q_ASSERT(mode);
     mode->setCurrentIndex(m_lastWorkMode);
     on_mode_currentChanged( m_lastWorkMode );
+}
+
+void VoteCounterShell::willCount()
+{
+    m_waitDialog->show();
+    setDisabled(true);
+}
+
+void VoteCounterShell::doneCounting()
+{
+    m_waitDialog->hide();
+    setDisabled(false);
 }
 
 

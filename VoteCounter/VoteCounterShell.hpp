@@ -21,6 +21,9 @@ public slots:
     void loadSnapshot(const QString& path);
     void recallLastWorkMode();
 
+    void willCount();
+    void doneCounting();
+
     // automatically connected slots for children's signals
     void on_snapDirPicker_clicked();
     void on_snapsList_clicked ( const QModelIndex & index );
@@ -32,6 +35,7 @@ protected:
     int m_lastWorkMode;
     QSettings m_settings;
     QFileSystemModel * m_fsModel;
+    QMessageBox * m_waitDialog;
 
     static QStringList s_persistentObjectNames;
 };
