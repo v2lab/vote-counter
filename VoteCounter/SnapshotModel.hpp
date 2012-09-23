@@ -103,17 +103,6 @@ protected:
     QList< QPolygon > detectContours(const QString& maskAndLayerName, bool addToScene = true, cv::Rect maskROI = cv::Rect(), int simple = 1);
 
     template<typename PItem>
-    QList<PItem> selectChildren(const QGraphicsItem* group) {
-        QList<PItem> result;
-        foreach(QGraphicsItem* item, group->childItems()) {
-            PItem cast = qgraphicsitem_cast<PItem>(item);
-            if (cast)
-                result << cast;
-        }
-        return result;
-    }
-
-    template<typename PItem>
     QList<PItem> filterItems(const QList<QGraphicsItem*>& list) {
         QList<PItem> result;
         foreach(QGraphicsItem* item, list) {

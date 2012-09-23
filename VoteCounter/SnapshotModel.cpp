@@ -250,9 +250,8 @@ void SnapshotModel::floodPickContour(int x, int y, int fuzz, const QString& laye
     QRect q_bounds = toQt(img_bounds);
     q_bounds.adjust(-1,-1,1,1);
     QGraphicsItem * contourGroup = layer( layerName );
-    foreach(QGraphicsItem * item, m_scene->items( q_bounds, Qt::IntersectsItemShape )) {
-        QGraphicsPolygonItem * poly_item = qgraphicsitem_cast<QGraphicsPolygonItem *>(item);
-        if (!poly_item || !contourGroup->isAncestorOf(poly_item)) continue;
+    foreach_item(QGraphicsPolygonItem *, poly_item, m_scene->items( q_bounds, Qt::IntersectsItemShape )) {
+        if (!contourGroup->isAncestorOf(poly_item)) continue;
         QRect poly_bounds = poly_item->polygon().boundingRect().toRect();
         q_bounds = q_bounds.united(poly_bounds);
         delete poly_item;
@@ -268,22 +267,16 @@ void SnapshotModel::unpick(int x, int y)
 {
     // find which contour we're in (shouldn't we capture it elsewhere then?)
     QGraphicsPolygonItem * unpicked_poly = 0;
-    foreach(QGraphicsItem * i, m_scene->items(QPointF(x,y))) {
-        unpicked_poly = qgraphicsitem_cast<QGraphicsPolygonItem *>(i);
-        if (unpicked_poly) break;
+    foreach_item(QGraphicsPolygonItem *, unpicked_poly, m_scene->items(QPointF(x,y))) {
+        QString layerName = unpicked_poly->parentItem()->data(ITEM_FULLNAME).toString();
+
+        // (un)draw this contour onto the mask
+        cv::Mat mask = getMatrix(layerName);
+        cv::floodFill( mask, cv::Point(x,y), cv::Scalar(0), 0, cv::Scalar(), cv::Scalar(), 4 | cv::FLOODFILL_FIXED_RANGE);
+
+        // delete the polygon itself
+        delete unpicked_poly;
     }
-
-    if (!unpicked_poly)
-        return;
-
-    QString layerName = unpicked_poly->parentItem()->data(ITEM_FULLNAME).toString();
-
-    // (un)draw this contour onto the mask
-    cv::Mat mask = getMatrix(layerName);
-    cv::floodFill( mask, cv::Point(x,y), cv::Scalar(0), 0, cv::Scalar(), cv::Scalar(), 4 | cv::FLOODFILL_FIXED_RANGE);
-
-    // 4. delete the polygon itself
-    delete unpicked_poly;
 
     updateViews();
 }
@@ -683,19 +676,13 @@ void SnapshotModel::clearContours(QRectF rect)
         return;
 
     // collect selected contours
-    QList<QGraphicsItem *>items = m_scene->items(rect,Qt::ContainsItemShape);
-
-    foreach(QGraphicsItem *i, items) {
-        QGraphicsPolygonItem * pi = qgraphicsitem_cast<QGraphicsPolygonItem *>(i);
-        if (pi) {
-
-            QString layerName = pi->parentItem()->data(ITEM_FULLNAME).toString();
-            cv::Mat mask = getMatrix(layerName);
-            // erase the polygon from the mask: it's more reliable to flood fill than draw a contour, so
-            cv::Point seed = toCv( pi->polygon()[0] );
-            cv::floodFill( mask, seed, cv::Scalar(0), 0, cv::Scalar(), cv::Scalar(), 4 | cv::FLOODFILL_FIXED_RANGE);
-            delete pi;
-        }
+    foreach_item(QGraphicsPolygonItem *, pi, m_scene->items(rect,Qt::ContainsItemShape)) {
+        QString layerName = pi->parentItem()->data(ITEM_FULLNAME).toString();
+        cv::Mat mask = getMatrix(layerName);
+        // erase the polygon from the mask: it's more reliable to flood fill than draw a contour, so
+        cv::Point seed = toCv( pi->polygon()[0] );
+        cv::floodFill( mask, seed, cv::Scalar(0), 0, cv::Scalar(), cv::Scalar(), 4 | cv::FLOODFILL_FIXED_RANGE);
+        delete pi;
     }
 
     updateViews();
