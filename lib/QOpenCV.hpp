@@ -40,6 +40,15 @@ inline QPolygon toQPolygon( const std::vector< cv::Point >& contour )
     return poly;
 }
 
+inline QPolygonF toQPolygonF( const std::vector< cv::Point2f >& contour )
+{
+    QPolygonF poly;
+    for(int i=0; i< contour.size(); i++) {
+        poly.append( QOpenCV::toQt( contour[i] ) );
+    }
+    return poly;
+}
+
 inline std::vector< cv::Point2f > toCv( const QVector< QPointF >& pointvec )
 {
     std::vector< cv::Point2f > result;
