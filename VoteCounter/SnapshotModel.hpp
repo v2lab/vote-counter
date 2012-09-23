@@ -37,6 +37,8 @@ public:
 
     QGraphicsScene * scene() { return m_scene; }
 signals:
+    void willCount();
+    void doneCounting();
 
 public slots:
     void setMode(Mode m);
@@ -62,6 +64,7 @@ public slots:
     void on_mouseLogic_pointClicked(QPointF point, Qt::MouseButton button, Qt::KeyboardModifiers mods);
     void on_mouseLogic_rectUpdated(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods);
     void on_mouseLogic_rectSelected(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods);
+    void on_countWatcher_finished();
 
 protected:
     static QStringSet s_cacheableImages;
@@ -87,6 +90,8 @@ protected:
     typedef float ColorType;
     typedef cv::flann::L2<ColorType> ColorDistance;
     cv::flann::GenericIndex< ColorDistance > * m_flann;
+
+    QFutureWatcher<void> m_countWatcher;
 
     void updateViews();
     void saveData();

@@ -33,7 +33,8 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     m_mode(INERT),
     m_color("green"),
     m_flann(0),
-    m_showColorDiff(false)
+    m_showColorDiff(false),
+    m_countWatcher(this)
 {
 
     m_pens["white"] = QPen(Qt::white);
@@ -44,6 +45,9 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     m_rectSelection->setZValue(100.0);
 
     m_mouseLogic->setObjectName("mouseLogic");
+    m_countWatcher.setObjectName("countWatcher");
+
+
     QMetaUtilities::connectSlotsByName( parent, this );
 
     qDebug() << "Loading" << qPrintable(path);
@@ -81,8 +85,8 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
         showPalette();
     }
     qDebug() << qPrintable(path) << "loaded";
-    if (!maybeCount())
-        updateViews();
+
+    updateViews();
 }
 
 SnapshotModel::~SnapshotModel()
@@ -241,8 +245,6 @@ void SnapshotModel::floodPickContour(int x, int y, int fuzz, const QString& laye
 
     // merge masks
     cv::Rect img_bounds = bounds - cv::Point(1,1);
-    qDebug() << "flood fill bounds:" << bounds.x << bounds.y << bounds.width << bounds.height;
-    qDebug() << "  in image coords:" << img_bounds.x << img_bounds.y << img_bounds.width << img_bounds.height;
     cv::Mat(mask, img_bounds) |= cv::Mat(pickMask, bounds) * 255;
 
     // if intersected some polygons - remove these polygons and grow ROI with their bounds
@@ -342,12 +344,18 @@ void SnapshotModel::on_count_clicked()
         return;
     }
 
-    classifyPixels();
+    emit willCount();
+    m_countWatcher.setFuture( QtConcurrent::run( this, &SnapshotModel::classifyPixels ) );
+}
+
+void SnapshotModel::on_countWatcher_finished()
+{
     computeColorDiff();
     countCards();
-
     updateViews();
+    emit doneCounting();
 }
+
 
 void SnapshotModel::classifyPixels()
 {
@@ -745,9 +753,9 @@ void SnapshotModel::addContour(const QPolygonF &contour, const QString &name, bo
 bool SnapshotModel::maybeCount()
 {
     if (m_mode == COUNT && m_flann) {
-        countCards();
+        on_count_clicked();
         return true;
-    } else
+    } else {
         return false;
-
+    }
 }
