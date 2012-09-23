@@ -296,7 +296,7 @@ void SnapshotModel::on_learn_clicked()
 
         for(int i = 0; i<input.rows; ++i)
             for(int j = 0; j<input.cols; ++j)
-                if (mask.at<unsigned char>(i+1,j+1))
+                if (mask.at<unsigned char>(i,j))
                     // copy this pixel
                     sample_pixels
                             << input.ptr<ColorType>(i)[j*3]
