@@ -280,7 +280,7 @@ void SnapshotModel::unpick(int x, int y)
 
     // (un)draw this contour onto the mask
     cv::Mat mask = getMatrix(layerName);
-    cv::floodFill( mask, cv::Point(x+1,y+1), cv::Scalar(0), 0, cv::Scalar(), cv::Scalar(), 8 | cv::FLOODFILL_FIXED_RANGE);
+    cv::floodFill( mask, cv::Point(x,y), cv::Scalar(0), 0, cv::Scalar(), cv::Scalar(), 4 | cv::FLOODFILL_FIXED_RANGE);
 
     // 4. delete the polygon itself
     delete unpicked_poly;
@@ -667,24 +667,25 @@ void SnapshotModel::clearContours(QRectF rect)
     if (m_mode != TRAIN && m_mode != COUNT)
         return;
 
-    clearContours(rect, layer( m_mode == TRAIN ? "train.contours." + m_color : "count.contours"));
+    // collect selected contours
+    QList<QGraphicsItem *>items = m_scene->items(rect,Qt::ContainsItemShape);
+
+    foreach(QGraphicsItem *i, items) {
+        QGraphicsPolygonItem * pi = qgraphicsitem_cast<QGraphicsPolygonItem *>(i);
+        if (pi) {
+
+            QString layerName = pi->parentItem()->data(ITEM_FULLNAME).toString();
+            cv::Mat mask = getMatrix(layerName);
+            // erase the polygon from the mask: it's more reliable to flood fill than draw a contour, so
+            cv::Point seed = toCv( pi->polygon()[0] );
+            cv::floodFill( mask, seed, cv::Scalar(0), 0, cv::Scalar(), cv::Scalar(), 4 | cv::FLOODFILL_FIXED_RANGE);
+            delete pi;
+        }
+    }
+
     updateViews();
 }
 
-void SnapshotModel::clearContours(QRectF rect, QGraphicsItem * layer)
-{
-    // collect selected contours
-    QList<QGraphicsItem *>items = m_scene->items(rect,Qt::ContainsItemShape);
-    QList<QGraphicsPolygonItem *>poly_items;
-    foreach(QGraphicsItem *i, items) {
-        QGraphicsPolygonItem * pi = qgraphicsitem_cast<QGraphicsPolygonItem *>(i);
-        if (pi && layer->isAncestorOf(pi))
-            poly_items << pi;
-    }
-    // remove them
-    foreach(QGraphicsPolygonItem * pi, poly_items)
-        delete pi;
-}
 
 QList< QPolygon >  SnapshotModel::detectContours(const QString &maskAndLayerName,
                                                  bool addToScene,

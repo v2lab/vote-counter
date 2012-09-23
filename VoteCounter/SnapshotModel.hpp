@@ -47,7 +47,6 @@ public slots:
 
     void mergeContours(QRectF rect);
     void clearContours(QRectF rect);
-    void clearContours(QRectF rect, QGraphicsItem * layer);
 
     void on_resetLayer_clicked();
     void on_learn_clicked();
