@@ -80,10 +80,9 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
 
         showPalette();
     }
-
-    updateViews();
-
     qDebug() << qPrintable(path) << "loaded";
+    if (!maybeCount())
+        updateViews();
 }
 
 SnapshotModel::~SnapshotModel()
@@ -741,4 +740,14 @@ void SnapshotModel::addContour(const QPolygonF &contour, const QString &name, bo
         contours.push_back(toCvInt(contour ));
         cv::fillPoly( mask, contours, cv::Scalar(255) );
     }
+}
+
+bool SnapshotModel::maybeCount()
+{
+    if (m_mode == COUNT && m_flann) {
+        countCards();
+        return true;
+    } else
+        return false;
+
 }

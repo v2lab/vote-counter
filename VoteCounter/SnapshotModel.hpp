@@ -44,6 +44,7 @@ public slots:
     void pick(int x, int y);
     void unpick(int x, int y);
     void clearLayer(const QString& name);
+    bool maybeCount();
 
     void mergeContours(QRectF rect);
     void clearContours(QRectF rect);
