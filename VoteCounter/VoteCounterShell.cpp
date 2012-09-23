@@ -15,8 +15,12 @@ QStringList() << "sizeLimit"
               << "sizeFilter";
 
 VoteCounterShell::VoteCounterShell(QWidget *parent) :
-    QMainWindow(parent), m_snapshot(0), m_lastWorkMode(0)
+    QMainWindow(parent),
+    m_snapshot(0),
+    m_lastWorkMode(0),
+    m_fsModel(new QFileSystemModel( this ))
 {
+    m_fsModel->setObjectName("fsModel");
 
 }
 
@@ -94,14 +98,22 @@ void VoteCounterShell::loadDir(const QString &path)
     // load the file list
     QListView * list = findChild<QListView*>("snapsList");
     if (list) {
-        QFileSystemModel * model = new QFileSystemModel( this );
-        model->setRootPath( path );
-        list->setModel(model);
-        list->setRootIndex(model->index(path));
-        model->setFilter( QDir::Files );
-        model->setNameFilters( QStringList() << "*.jpg" << "*.JPG"  );
-        model->setNameFilterDisables(false);
+        m_fsModel->setRootPath( path );
+        list->setModel(m_fsModel);
+        list->setRootIndex(m_fsModel->index(path));
+        m_fsModel->setFilter( QDir::Files );
+        m_fsModel->setNameFilters( QStringList() << "*.jpg" << "*.JPG"  );
+        m_fsModel->setNameFilterDisables(false);
     }
+}
+
+void VoteCounterShell::on_fsModel_directoryLoaded(QString path)
+{
+    QListView * list = findChild<QListView*>("snapsList");
+    m_fsModel->sort(3, Qt::DescendingOrder); // newest first
+    QModelIndex newest = m_fsModel->index(0, 0, list->rootIndex());
+    list->setCurrentIndex(newest);
+    on_snapsList_clicked(newest);
 }
 
 void VoteCounterShell::on_snapsList_clicked( const QModelIndex & index )

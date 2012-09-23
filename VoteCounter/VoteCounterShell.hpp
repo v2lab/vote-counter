@@ -25,11 +25,14 @@ public slots:
     void on_snapDirPicker_clicked();
     void on_snapsList_clicked ( const QModelIndex & index );
     void on_mode_currentChanged( int index );
+    void on_fsModel_directoryLoaded(QString path);
 
 protected:
     SnapshotModel * m_snapshot;
     int m_lastWorkMode;
     QSettings m_settings;
+    QFileSystemModel * m_fsModel;
+
     static QStringList s_persistentObjectNames;
 };
 
