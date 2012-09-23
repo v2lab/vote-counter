@@ -100,6 +100,7 @@ void VoteCounterShell::loadDir(const QString &path)
         list->setRootIndex(model->index(path));
         model->setFilter( QDir::Files );
         model->setNameFilters( QStringList() << "*.jpg" << "*.JPG"  );
+        model->setNameFilterDisables(false);
     }
 }
 
