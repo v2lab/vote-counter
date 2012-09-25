@@ -36,6 +36,7 @@ protected:
     QSettings m_settings;
     QFileSystemModel * m_fsModel;
     QMessageBox * m_waitDialog;
+    QString m_lastNewest;
 
     static QStringList s_persistentObjectNames;
 };
