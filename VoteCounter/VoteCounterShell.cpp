@@ -84,7 +84,8 @@ void VoteCounterShell::saveSettings()
 
 void VoteCounterShell::on_snapDirPicker_clicked()
 {
-    QString path = QFileDialog::getExistingDirectory(this, "Snapshots directory");
+    QString path = QFileDialog::getExistingDirectory(this, "Snapshots directory",
+                                                     m_settings.value("snaps_dir", "").toString());
     if (path.isNull())
         return;
 
