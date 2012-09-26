@@ -39,6 +39,10 @@ protected:
     QString m_lastNewest;
 
     static QStringList s_persistentObjectNames;
+
+    virtual bool eventFilter(QObject *, QEvent *);
+    QSet<QEvent*> m_eventFilterSentinel;
+
 };
 
 #endif // VOTECOUNTERSHELL_HPP

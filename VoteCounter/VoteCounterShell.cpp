@@ -1,5 +1,6 @@
 #include "VoteCounterShell.hpp"
 #include "SnapshotModel.hpp"
+#include "ScopedDetention.hpp"
 
 #include <QDir>
 #include <QListWidget>
@@ -38,6 +39,11 @@ VoteCounterShell::~VoteCounterShell()
 
 void VoteCounterShell::loadSettings()
 {
+
+    QGraphicsView * display = findChild<QGraphicsView*>("display");
+    Q_ASSERT(display);
+    display->installEventFilter(this);
+
     foreach(QString name, s_persistentObjectNames) {
         QObject * o = findChild<QObject*>(name);
         if (!o) {
@@ -145,9 +151,26 @@ void VoteCounterShell::loadSnapshot(const QString &path)
 
     QGraphicsView * display = findChild<QGraphicsView*>("display");
     display->setScene( m_snapshot->scene() );
-    display->fitInView( m_snapshot->scene()->sceneRect(), Qt::KeepAspectRatio );
+    display->fitInView( display->sceneRect(), Qt::KeepAspectRatio );
 
     recallLastWorkMode();
+}
+
+bool VoteCounterShell::eventFilter(QObject * object, QEvent * event)
+{
+    // avoid event filter recursion
+    if (!m_eventFilterSentinel.contains(event)) {
+        // will detain event in the sentinel while inside this scope
+        ScopedDetention<QEvent*> detention(m_eventFilterSentinel, event);
+
+        QGraphicsView * display = findChild<QGraphicsView*>("display");
+        if (object==display && event->type() == QEvent::Resize) {
+            QApplication::sendEvent(display,event);
+            display->fitInView( display->sceneRect(), Qt::KeepAspectRatio );
+            return true;
+        }
+    }
+    return QWidget::eventFilter(object, event);
 }
 
 void VoteCounterShell::on_mode_currentChanged( int index )
