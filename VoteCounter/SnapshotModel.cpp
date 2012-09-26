@@ -340,6 +340,8 @@ void SnapshotModel::on_learn_clicked()
 
 void SnapshotModel::on_count_clicked()
 {
+    if (m_mode != COUNT)
+        return;
     if (!m_flann) {
         qDebug() << "Teach me the colors first";
         return;
@@ -749,15 +751,5 @@ void SnapshotModel::addContour(const QPolygonF &contour, const QString &name, bo
         std::vector< std::vector< cv::Point > > contours;
         contours.push_back(toCvInt(contour ));
         cv::fillPoly( mask, contours, cv::Scalar(255) );
-    }
-}
-
-bool SnapshotModel::maybeCount()
-{
-    if (m_mode == COUNT && m_flann) {
-        on_count_clicked();
-        return true;
-    } else {
-        return false;
     }
 }

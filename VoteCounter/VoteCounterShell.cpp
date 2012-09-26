@@ -85,7 +85,7 @@ void VoteCounterShell::saveSettings()
 void VoteCounterShell::on_snapDirPicker_clicked()
 {
     QString path = QFileDialog::getExistingDirectory(this, "Snapshots directory",
-                                                     m_settings.value("snaps_dir", "").toString());
+                                                     m_settings.value("snaps_dir", QString()).toString());
     if (path.isNull())
         return;
 
@@ -142,7 +142,7 @@ void VoteCounterShell::on_snapsList_clicked( const QModelIndex & index )
     connect(m_snapshot, SIGNAL(willCount()), SLOT(willCount()));
     connect(m_snapshot, SIGNAL(doneCounting()), SLOT(doneCounting()));
 
-    m_snapshot->maybeCount();
+    findChild<QPushButton*>("count")->animateClick();
 }
 
 void VoteCounterShell::loadSnapshot(const QString &path)
@@ -209,13 +209,11 @@ void VoteCounterShell::recallLastWorkMode()
 void VoteCounterShell::willCount()
 {
     m_waitDialog->show();
-    setDisabled(true);
 }
 
 void VoteCounterShell::doneCounting()
 {
     m_waitDialog->hide();
-    setDisabled(false);
 }
 
 
