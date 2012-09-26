@@ -48,7 +48,6 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     m_mouseLogic->setObjectName("mouseLogic");
     m_countWatcher.setObjectName("countWatcher");
 
-
     QMetaUtilities::connectSlotsByName( parent, this );
 
     qDebug() << "Loading" << qPrintable(path);
@@ -85,7 +84,6 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
 
         showPalette();
     }
-    qDebug() << qPrintable(path) << "loaded";
 
     updateViews();
 }

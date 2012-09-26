@@ -19,6 +19,9 @@
    </property>
    <item>
     <widget class="QSplitter" name="splitter">
+     <property name="lineWidth">
+      <number>0</number>
+     </property>
      <property name="midLineWidth">
       <number>0</number>
      </property>
@@ -27,6 +30,9 @@
      </property>
      <property name="handleWidth">
       <number>5</number>
+     </property>
+     <property name="childrenCollapsible">
+      <bool>false</bool>
      </property>
      <widget class="QListView" name="snapsList">
       <property name="sizePolicy">
@@ -44,11 +50,20 @@
       <property name="horizontalScrollBarPolicy">
        <enum>Qt::ScrollBarAlwaysOff</enum>
       </property>
+      <property name="movement">
+       <enum>QListView::Static</enum>
+      </property>
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <property name="uniformItemSizes">
+       <bool>true</bool>
+      </property>
      </widget>
      <widget class="QFrame" name="frame">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-        <horstretch>2</horstretch>
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>1</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
@@ -202,9 +217,7 @@
               <string>green</string>
              </property>
              <property name="styleSheet">
-              <string notr="true">QLabel {
-background: &quot;#AAFFAA&quot;;
-}</string>
+              <string notr="true">background: &quot;#AAFFAA&quot;;</string>
              </property>
              <property name="lineWidth">
               <number>0</number>
@@ -452,9 +465,7 @@ background: &quot;#AAFFAA&quot;;
                  <string>green</string>
                 </property>
                 <property name="styleSheet">
-                 <string notr="true">QLabel {
-background: &quot;#AAFFAA&quot;;
-}</string>
+                 <string notr="true">background: &quot;#AAFFAA&quot;;</string>
                 </property>
                 <property name="text">
                  <string>0</string>

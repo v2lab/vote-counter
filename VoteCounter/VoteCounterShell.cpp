@@ -122,12 +122,17 @@ void VoteCounterShell::loadDir(const QString &path)
 void VoteCounterShell::on_fsModel_directoryLoaded(QString path)
 {
     QListView * list = findChild<QListView*>("snapsList");
+    int minlistw = list->sizeHintForColumn(0);
+    list->setMinimumWidth( minlistw );
+
+    QSplitter * splitter = findChild<QSplitter*>("splitter");
+    splitter->setSizes( QList<int>() << minlistw << splitter->width() - minlistw - splitter->handleWidth() );
+
     m_fsModel->sort(3, Qt::DescendingOrder); // newest first
     QModelIndex newest = m_fsModel->index(0, 0, list->rootIndex());
 
     if ( newest.data().toString() != m_lastNewest ) {
         m_lastNewest = newest.data().toString();
-        qDebug() << "new newest file detected";
         list->setCurrentIndex(newest);
         on_snapsList_clicked(newest);
     }
