@@ -1,6 +1,7 @@
 #include "SnapshotModel.hpp"
 #include "QMetaUtilities.hpp"
 #include "MouseLogic.hpp"
+#include "ScopedTimer.hpp"
 
 #include "QOpenCV.hpp"
 using namespace QOpenCV;
@@ -359,6 +360,8 @@ void SnapshotModel::on_countWatcher_finished()
 
 void SnapshotModel::classifyPixels()
 {
+    QArtm::ScopedTimer timer("K-Nearest Neighbour Search");
+
     cv::Mat input = getMatrix("lab");
 
     int n_pixels = input.rows * input.cols;
@@ -369,10 +372,8 @@ void SnapshotModel::classifyPixels()
             indices_1 = indices.reshape( 1, n_pixels ),
             dists_1 = dists.reshape( 1, n_pixels );
 
-    qDebug() << "K-Nearest Neighbout Search";
     cvflann::SearchParams params(cvflann::FLANN_CHECKS_UNLIMITED, 0);
     m_flann->knnSearch( input_1, indices_1, dists_1, 1, params);
-    qDebug() << "K-Nearest Neighbout Search done";
 
     setMatrix("indices", indices);
     setMatrix("dists", dists);
@@ -487,6 +488,7 @@ QImage SnapshotModel::getImage(const QString &tag)
         }
         if (img.isNull()) {
             if (tag == "input") {
+                QArtm::ScopedTimer("Scaling the input image down");
                 img = QImage( m_originalPath )
                         .scaled( size_limit, size_limit, Qt::KeepAspectRatio, Qt::SmoothTransformation )
                         .convertToFormat(QImage::Format_RGB888);
