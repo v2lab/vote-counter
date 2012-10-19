@@ -510,6 +510,25 @@
              </layout>
             </widget>
            </item>
+           <item row="0" column="8">
+            <widget class="QPushButton" name="commit">
+             <property name="toolTip">
+              <string>commit vote results to Heckle</string>
+             </property>
+             <property name="text">
+              <string>commit</string>
+             </property>
+             <property name="autoDefault">
+              <bool>false</bool>
+             </property>
+             <property name="default">
+              <bool>false</bool>
+             </property>
+             <property name="flat">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
           </layout>
          </widget>
          <widget class="QWidget" name="prefsTab">
@@ -604,7 +623,7 @@
              </property>
             </widget>
            </item>
-           <item row="3" column="5">
+           <item row="3" column="6">
             <spacer name="horizontalSpacer">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
@@ -616,6 +635,16 @@
               </size>
              </property>
             </spacer>
+           </item>
+           <item row="1" column="5">
+            <widget class="QLineEdit" name="heckleUrl">
+             <property name="toolTip">
+              <string>Heckle URL</string>
+             </property>
+             <property name="text">
+              <string>http://localhost:4567/heckle</string>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>

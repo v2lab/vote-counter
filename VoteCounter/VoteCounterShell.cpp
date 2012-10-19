@@ -13,7 +13,8 @@ QStringList VoteCounterShell::s_persistentObjectNames =
 QStringList() << "sizeLimit"
               << "pickFuzz"
               << "colorDiffThreshold"
-              << "sizeFilter";
+              << "sizeFilter"
+              << "heckleUrl";
 
 VoteCounterShell::VoteCounterShell(QWidget *parent) :
     QMainWindow(parent),
@@ -56,6 +57,10 @@ void VoteCounterShell::loadSettings()
             QVariant value = m_settings.value(name);
             if (value.isValid())
                 o->setProperty("value", value);
+        } else if ((o->metaObject()->indexOfProperty("text") >= 0)) {
+            QVariant value = m_settings.value(name);
+            if (value.isValid())
+                o->setProperty("text", value);
         }
     }
 
@@ -74,6 +79,8 @@ void VoteCounterShell::saveSettings()
         if ((o->metaObject()->indexOfProperty("value") >= 0)
                 || (o->dynamicPropertyNames().contains("value"))) {
             m_settings.setValue(name, o->property("value"));
+        } else if ((o->metaObject()->indexOfProperty("text") >= 0)) {
+            m_settings.setValue(name, o->property("text"));
         }
     }
 
@@ -220,5 +227,3 @@ void VoteCounterShell::doneCounting()
 {
     m_waitDialog->hide();
 }
-
-
