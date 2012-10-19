@@ -1,5 +1,6 @@
 #include <QtGui>
 #include <QtCore>
- #include <QUiLoader>
+#include <QtNetwork>
+#include <QUiLoader>
 
 #include <opencv2/opencv.hpp>

@@ -1,3 +1,5 @@
+#include "static.h"
+
 #include "SnapshotModel.hpp"
 #include "QMetaUtilities.hpp"
 #include "MouseLogic.hpp"
@@ -8,17 +10,6 @@ using namespace QOpenCV;
 
 #include <qt-json/json.h>
 using namespace QtJson;
-
-#include <QFileInfo>
-#include <QDir>
-#include <QMap>
-#include <QVector>
-#include <QImage>
-#include <QGraphicsScene>
-#include <QGraphicsItem>
-#include <QGraphicsPolygonItem>
-#include <QEvent>
-#include <QGraphicsSceneMouseEvent>
 
 QStringSet SnapshotModel::s_cacheableImages = QStringSet() << "input";
 QStringSet SnapshotModel::s_resizedImages = QStringSet() << "input";
@@ -35,7 +26,8 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     m_color("green"),
     m_flann(0),
     m_showColorDiff(false),
-    m_countWatcher(this)
+    m_countWatcher(this),
+    m_networkManager( new QNetworkAccessManager(this) )
 {
 
     m_pens["white"] = QPen(Qt::white);
@@ -47,6 +39,7 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
 
     m_mouseLogic->setObjectName("mouseLogic");
     m_countWatcher.setObjectName("countWatcher");
+    m_networkManager->setObjectName("http");
 
     QMetaUtilities::connectSlotsByName( parent, this );
 
@@ -94,9 +87,9 @@ SnapshotModel::~SnapshotModel()
     saveData();
 }
 
-QVariant SnapshotModel::uiValue(const QString &name)
+QVariant SnapshotModel::uiValue(const QString &name, const char * property)
 {
-    return parent()->findChild<QObject*>(name)->property("value");
+    return parent()->findChild<QObject*>(name)->property(property);
 }
 
 void SnapshotModel::pick(int x, int y)
@@ -750,4 +743,30 @@ void SnapshotModel::addContour(const QPolygonF &contour, const QString &name, bo
         contours.push_back(toCvInt(contour ));
         cv::fillPoly( mask, contours, cv::Scalar(255) );
     }
+}
+
+void SnapshotModel::on_commit_clicked()
+{
+    QUrl url( uiValue("heckleUrl", "text").toString() );
+
+    QHttpPart textPart;
+    textPart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"counts\""));
+    textPart.setBody(qPrintable(
+                         QString("%1 %2 %3")
+                         .arg( uiValue("greenCount", "text").toInt() )
+                         .arg( uiValue("pinkCount", "text").toInt() )
+                         .arg( uiValue("yellowCount", "text").toInt() )
+                         ));
+
+    QHttpMultiPart *multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+    multiPart->append(textPart);
+
+    m_networkManager->post( QNetworkRequest(url), multiPart );
+}
+
+void SnapshotModel::on_http_finished(QNetworkReply *reply)
+{
+    if (reply->error() != QNetworkReply::NoError)
+        qDebug() << "HTTP Error:" << reply->error();
+    reply->deleteLater();
 }

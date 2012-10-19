@@ -64,6 +64,8 @@ public slots:
     void on_mouseLogic_rectUpdated(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods);
     void on_mouseLogic_rectSelected(QRectF rect, Qt::MouseButton button, Qt::KeyboardModifiers mods);
     void on_countWatcher_finished();
+    void on_commit_clicked();
+    void on_http_finished( QNetworkReply * reply );
 
 protected:
     static QStringSet s_cacheableImages;
@@ -91,6 +93,8 @@ protected:
     cv::flann::GenericIndex< ColorDistance > * m_flann;
 
     QFutureWatcher<void> m_countWatcher;
+
+    QNetworkAccessManager * m_networkManager;
 
     void updateViews();
     void saveData();
@@ -120,7 +124,7 @@ protected:
 
 #define foreach_item(PItem, i, list) foreach(PItem i, filterItems<PItem>(list))
 
-    QVariant uiValue(const QString& name);
+    QVariant uiValue(const QString& name, const char * property = "value");
 };
 
 #endif // SNAPSHOTMODEL_HPP
