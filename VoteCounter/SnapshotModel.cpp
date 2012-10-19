@@ -747,21 +747,18 @@ void SnapshotModel::addContour(const QPolygonF &contour, const QString &name, bo
 
 void SnapshotModel::on_commit_clicked()
 {
-    QUrl url( uiValue("heckleUrl", "text").toString() );
+    // http://heckle.at/heckle/6/tvt.php?f=command_vc&v=77&u=14&o=88
+    // v is pink
+    // u is green
+    // o is yellow
 
-    QHttpPart textPart;
-    textPart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"counts\""));
-    textPart.setBody(qPrintable(
-                         QString("%1 %2 %3")
-                         .arg( uiValue("greenCount", "text").toInt() )
-                         .arg( uiValue("pinkCount", "text").toInt() )
-                         .arg( uiValue("yellowCount", "text").toInt() )
-                         ));
+    QUrl url( QString("%1?f=command_vc&v=%2&u=%3&o=%4")
+              .arg( uiValue("heckleUrl", "text").toString() )
+              .arg( uiValue("pinkCount", "text").toInt()    )
+              .arg( uiValue("greenCount", "text").toInt()   )
+              .arg( uiValue("yellowCount", "text").toInt()  ) );
 
-    QHttpMultiPart *multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
-    multiPart->append(textPart);
-
-    m_networkManager->post( QNetworkRequest(url), multiPart );
+    m_networkManager->get( QNetworkRequest(url) );
 }
 
 void SnapshotModel::on_http_finished(QNetworkReply *reply)
