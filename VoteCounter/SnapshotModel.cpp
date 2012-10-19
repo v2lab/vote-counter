@@ -30,7 +30,7 @@ SnapshotModel::SnapshotModel(const QString& path, QObject *parent) :
     m_networkManager( new QNetworkAccessManager(this) )
 {
 
-    m_pens["white"] = QPen(Qt::white);
+    m_pens["counted"] = QPen(QColor(100,100,255, 200), 2);
     m_pens["+selection"] = QPen(QColor(128,255,128,128), 0);
     m_pens["-selection"] = QPen(QColor(255,128,128,128), 0);
     m_rectSelection = new QGraphicsRectItem(0,m_scene);
@@ -453,7 +453,7 @@ void SnapshotModel::countCards()
             } else
                 polygon = toQPolygon(contour);
             QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( polygon, layer(layerName) );
-            poly_item->setPen(m_pens["white"]);
+            poly_item->setPen(m_pens["counted"]);
             count ++;
         }
     }
@@ -736,7 +736,7 @@ QList< QPolygon >  SnapshotModel::detectContours(const QString &maskAndLayerName
 void SnapshotModel::addContour(const QPolygonF &contour, const QString &name, bool paintToMask)
 {
     QGraphicsPolygonItem * poly_item = new QGraphicsPolygonItem( contour, layer(name) );
-    poly_item->setPen(m_pens["white"]);
+    poly_item->setPen(m_pens["counted"]);
     if (paintToMask) {
         cv::Mat mask = getMatrix(name);
         std::vector< std::vector< cv::Point > > contours;
